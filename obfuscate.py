@@ -29,6 +29,7 @@ config = {
 	'quiet' : False,
 	'file' : '',
 	'output' : '',
+	'garbage_perc' : 12.0
 }
 
 def out(x):
@@ -62,17 +63,17 @@ class ScriptObfuscator():
 		self.output = re.sub(r"(?<!\"[^\"])'(.*)", "", self.output, flags=re.I)
 		self.output = re.sub(r"\t| {2,}", "", self.output, flags=re.I)
 
-		# Step 2: Remove empty lines
-		self.output = '\n'.join(filter(lambda x: not re.match(r'^\s*$', x), self.output.split('\n')))
-
-		# Step 3: Rename used variables
+		# Step 2: Rename used variables
 		self.randomizeVariablesAndFunctions()
 
-		# Step 4: Explode string constants
+		# Step 3: Explode string constants
 		self.obfuscateStrings()
 
-		# Step 5: Insert garbage
+		# Step 4: Insert garbage
 		self.insertGarbage()
+
+		# Step 5: Remove empty lines
+		self.output = '\n'.join(filter(lambda x: not re.match(r'^\s*$', x), self.output.split('\n')))
 
 		return self.output
 
@@ -135,24 +136,34 @@ class ScriptObfuscator():
 
 	def insertGarbage(self):
 		lines = self.output.split('\n')
-		garbages_num = int((12.0 / 100.0) * len(lines))	# 12 %
+		garbages_num = int((config['garbage_perc'] / 100.0) * len(lines))
 		new_lines = ['' for x in range(len(lines) + garbages_num)]
 		garbage_lines = [random.randint(0, len(new_lines)-1) for x in range(garbages_num)]
 
 		info('Appending %d garbage lines to the %d lines of input code %s' % \
 			(garbages_num, len(lines), str(garbage_lines)))
 
+		is_end = lambda x: ('End Sub' in x or 'End Function' in x)
+		is_start = lambda x: ('Sub ' in x or 'Function ' in x) and ('(' in x or '()' in x)
+
 		j = 0
 		inside_func = False
 		for i in range(len(new_lines)):
 			if j >= len(lines): break
 			line = lines[j]
-			if ('Sub' in line or 'Function' in line) \
-				and ('(' in line or '()' in line):
+
+			if is_start(lines[j]) \
+				or (j > 0 and is_start(lines[j-1])) \
+				or (j > 1 and is_start(lines[j-2])):
 				inside_func = True
 
-			elif ('End Sub' in line or 'End Function' in line) \
-				and (j > 0 and ('End Sub' not in lines[j - 1]) or ('End Function' not in lines[j - 1])):
+			elif is_end(lines[j]) \
+				or (j > 0 and is_end(lines[j-1])) \
+				or (j > 1 and is_end(lines[j-2])) \
+				or (j > 2 and is_end(lines[j-3])) \
+				or (j > len(new_lines) - 1 and is_start(lines[j+1])) \
+				or (j < len(new_lines) - 2 and is_start(lines[j+2])) \
+				or (j < len(new_lines) - 3 and is_start(lines[j+3])):
 				inside_func = False
 
 			if i in garbage_lines:
@@ -173,8 +184,6 @@ class ScriptObfuscator():
 				else:
 					new_lines[i] = 'Dim %(varName)s\nSet %(varName)s = %(varContents)s' % \
 					{'varName' : varName, 'varContents' : varContents}
-
-				new_lines[i] = '(GARBAGE) ' + new_lines[i]
 			else:
 				new_lines[i] = lines[j]
 				j += 1
@@ -207,7 +216,8 @@ def parse_options(argv):
 
 	group = parser.add_mutually_exclusive_group()
 	parser.add_argument("input_file", help="Visual Basic script to be obfuscated.")
-	group.add_argument("-o", "--output", help="Output file. Default: stdout")
+	parser.add_argument("-o", "--output", help="Output file. Default: stdout")
+	parser.add_argument("-g", "--garbage", help="Percent of garbage to append to the obfuscated code. Default: 12%%.", default=12.0, type=float)
 	group.add_argument("-v", "--verbose", help="Verbose output.", action="store_true")
 	group.add_argument("-q", "--quiet", help="No output.", action="store_true")
 
@@ -225,6 +235,12 @@ def parse_options(argv):
 	else:
 		config['file'] = args.input_file
 
+	if args.garbage < 0.0 or args.garbage > 100.0:
+		err("Garbage parameter must be in range (0, 100)!")
+		return False
+	else:
+		config['garbage_perc'] = args.garbage
+
 	return True
 
 def main(argv):
@@ -236,7 +252,7 @@ def main(argv):
 	if not parse_options(argv):
 		return False
 
-	ok('Input file:\t"%s"' % config['file'])
+	ok('Input file:\t\t"%s"' % config['file'])
 	if config['output']:
 		ok('Output file:\t"%s"' % config['output'])
 	else:
