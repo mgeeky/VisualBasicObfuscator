@@ -71,6 +71,9 @@ class ScriptObfuscator():
 		# Step 4: Explode string constants
 		self.obfuscateStrings()
 
+		# Step 5: Insert garbage
+		self.insertGarbage()
+
 		return self.output
 
 	def randomizeVariablesAndFunctions(self):
@@ -129,6 +132,55 @@ class ScriptObfuscator():
 			new_string = self.obfuscateString(string)
 
 			self.output = self.output.replace(orig_string, new_string)
+
+	def insertGarbage(self):
+		lines = self.output.split('\n')
+		garbages_num = int((12.0 / 100.0) * len(lines))	# 12 %
+		new_lines = ['' for x in range(len(lines) + garbages_num)]
+		garbage_lines = [random.randint(0, len(new_lines)-1) for x in range(garbages_num)]
+
+		info('Appending %d garbage lines to the %d lines of input code %s' % \
+			(garbages_num, len(lines), str(garbage_lines)))
+
+		j = 0
+		inside_func = False
+		for i in range(len(new_lines)):
+			if j >= len(lines): break
+			line = lines[j]
+			if ('Sub' in line or 'Function' in line) \
+				and ('(' in line or '()' in line):
+				inside_func = True
+
+			elif ('End Sub' in line or 'End Function' in line) \
+				and (j > 0 and ('End Sub' not in lines[j - 1]) or ('End Function' not in lines[j - 1])):
+				inside_func = False
+
+			if i in garbage_lines:
+				# Insert garbage
+				comment = False
+				if inside_func:
+					# Add comment or fake string initialization line.
+					if random.randint(0, 2) == 0:
+						comment = True
+				else:
+					comment = True
+
+				varName = randomString(random.randint(4,12))
+				varContents = self.obfuscateString(randomString(random.randint(10,30)))
+				if comment:
+					new_lines[i] = '\'Dim %(varName)s\n\'Set %(varName)s = %(varContents)s' % \
+					{'varName' : varName, 'varContents' : varContents}
+				else:
+					new_lines[i] = 'Dim %(varName)s\nSet %(varName)s = %(varContents)s' % \
+					{'varName' : varName, 'varContents' : varContents}
+
+				new_lines[i] = '(GARBAGE) ' + new_lines[i]
+			else:
+				new_lines[i] = lines[j]
+				j += 1
+
+
+		self.output = '\n'.join(new_lines)
 
 
 def randomString(len):
