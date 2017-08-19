@@ -152,23 +152,27 @@ class ScriptObfuscator():
 			if j >= len(lines): break
 			line = lines[j]
 
-			if is_start(lines[j]) \
-				or (j > 0 and is_start(lines[j-1])) \
-				or (j > 1 and is_start(lines[j-2])):
-				inside_func = True
+			# TODO: THIS SIMPLY DOESNT WORK AT THE MOMENT.
+			# if is_start(lines[j]) \
+			# 	or (j > 0 and is_start(lines[j-1])) \
+			# 	or (j > 1 and is_start(lines[j-2])) \
+			# 	or (is_end(lines[j])) \
+			# 	or (j < (len(lines) - 2) and is_end(lines[j+1])) \
+			# 	or (j < (len(lines) - 3) and is_end(lines[j+2])):
+			# 	inside_func = True
 
-			elif is_end(lines[j]) \
-				or (j > 0 and is_end(lines[j-1])) \
-				or (j > 1 and is_end(lines[j-2])) \
-				or (j > 2 and is_end(lines[j-3])) \
-				or (j > len(new_lines) - 1 and is_start(lines[j+1])) \
-				or (j < len(new_lines) - 2 and is_start(lines[j+2])) \
-				or (j < len(new_lines) - 3 and is_start(lines[j+3])):
-				inside_func = False
+			# elif is_end(lines[j]) \
+			# 	or (j > 0 and is_end(lines[j-1])) \
+			# 	or (j > 1 and is_end(lines[j-2])) \
+			# 	or (j > 2 and is_end(lines[j-3])) \
+			# 	or (j > (len(lines) - 2) and is_start(lines[j+1])) \
+			# 	or (j < (len(lines) - 3) and is_start(lines[j+2])) \
+			# 	or (j < (len(lines) - 4) and is_start(lines[j+3])):
+			# 	inside_func = False
 
 			if i in garbage_lines:
 				# Insert garbage
-				comment = False
+				comment = True 		# TODO: Switch this to False and improve inside_func code
 				if inside_func:
 					# Add comment or fake string initialization line.
 					if random.randint(0, 2) == 0:
