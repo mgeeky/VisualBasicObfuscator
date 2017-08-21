@@ -51,9 +51,10 @@ def ok(x):
 
 class ScriptObfuscator():
 
-	def __init__(self):
+	def __init__(self, garbage_perc):
 		self.input = ''
 		self.output = ''
+		self.garbage_perc = garbage_perc
 
 	def obfuscate(self, inp):
 		self.input = inp
@@ -78,13 +79,13 @@ class ScriptObfuscator():
 		return self.output
 
 	def randomizeVariablesAndFunctions(self):
-		for m in re.finditer(r"([ \t]*(?:Dim|Set|Sub)?\s*)(?<!\.)\b([^'\"\s\.]+)(\s*=)", self.output, flags = re.I|re.M):
+		for m in re.finditer(r"(?:Dim|Set)\s*(\w+)\s*(?:As|=)?", self.output, flags = re.I|re.M):
 			varName = randomString(random.randint(4,12))
-			varToReplace = m.group(2)
+			varToReplace = m.group(1)
 			info("Variable name obfuscated: '%s' => '%s'" % (varToReplace, varName))
-			self.output = self.output.replace(varToReplace, varName)
+			self.output = re.sub(r"\b" + varToReplace + r"\b", varName, self.output, flags=re.I | re.M)
 
-		for m in re.finditer(r"\s*(?:\w+)?(?:Sub|Function)\s+(\w+)\(\)", self.output, flags = re.I|re.M):
+		for m in re.finditer(r"\s*(?:Public|Private|Protected|Friend)?\s*(?:Sub|Function)\s+(\w+)\s*\(", self.output, flags = re.I|re.M):
 			varName = randomString(random.randint(4,12))
 			varToReplace = m.group(1)
 			if varToReplace in RESERVED_NAMES:
@@ -135,8 +136,11 @@ class ScriptObfuscator():
 			self.output = self.output.replace(orig_string, new_string)
 
 	def insertGarbage(self):
+		if self.garbage_perc == 0.0:
+			return
+
 		lines = self.output.split('\n')
-		garbages_num = int((config['garbage_perc'] / 100.0) * len(lines))
+		garbages_num = int((self.garbage_perc / 100.0) * len(lines))
 		new_lines = ['' for x in range(len(lines) + garbages_num)]
 		garbage_lines = [random.randint(0, len(new_lines)-1) for x in range(garbages_num)]
 
@@ -221,7 +225,7 @@ def parse_options(argv):
 	group = parser.add_mutually_exclusive_group()
 	parser.add_argument("input_file", help="Visual Basic script to be obfuscated.")
 	parser.add_argument("-o", "--output", help="Output file. Default: stdout")
-	parser.add_argument("-g", "--garbage", help="Percent of garbage to append to the obfuscated code. Default: 12%%.", default=12.0, type=float)
+	parser.add_argument("-g", "--garbage", help="Percent of garbage to append to the obfuscated code. Default: 12%%. 0 to disable.", default=12.0, type=float)
 	group.add_argument("-v", "--verbose", help="Verbose output.", action="store_true")
 	group.add_argument("-q", "--quiet", help="No output.", action="store_true")
 
@@ -268,7 +272,7 @@ def main(argv):
 
 	out('\n[.] Input file length: %d' % len(contents))
 
-	obfuscator = ScriptObfuscator()
+	obfuscator = ScriptObfuscator(config['garbage_perc'])
 	obfuscated = obfuscator.obfuscate(contents)
 
 	if obfuscated:
