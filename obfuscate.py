@@ -60,9 +60,8 @@ class ScriptObfuscator():
 		self.input = inp
 		self.output = inp
 
-		# Step 1: Remove comments and indents
+		# Step 1: Remove comments
 		self.output = re.sub(r"(?<!\"[^\"])'(.*)", "", self.output, flags=re.I)
-		self.output = re.sub(r"\t| {2,}", "", self.output, flags=re.I)
 
 		# Step 2: Rename used variables
 		self.randomizeVariablesAndFunctions()
@@ -75,12 +74,14 @@ class ScriptObfuscator():
 
 		# Step 5: Remove empty lines
 		self.output = '\n'.join(filter(lambda x: not re.match(r'^\s*$', x), self.output.split('\n')))
+		
+		# Step 6: Remove indents and multi-spaces.
+		self.output = re.sub(r"\t| {2,}", "", self.output, flags=re.I)
 
 		return self.output
 
 	def randomizeVariablesAndFunctions(self):
 		for m in re.finditer(r"(?:Dim|Set|Const)\s*(\w+)\s*(?:As|=)?", self.output, flags = re.I|re.M):
->>>>>>> a4328b74fa161bbee158dec13de4b5c5e9984963
 			varName = randomString(random.randint(4,12))
 			varToReplace = m.group(1)
 			info("Variable name obfuscated: '%s' => '%s'" % (varToReplace, varName))
