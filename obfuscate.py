@@ -81,19 +81,28 @@ class ScriptObfuscator():
 		return self.output
 
 	def randomizeVariablesAndFunctions(self):
+		# Variables
 		for m in re.finditer(r"(?:Dim|Set|Const)\s*(\w+)\s*(?:As|=)?", self.output, flags = re.I|re.M):
 			varName = randomString(random.randint(4,12))
 			varToReplace = m.group(1)
 			info("Variable name obfuscated: '%s' => '%s'" % (varToReplace, varName))
 			self.output = re.sub(r"\b" + varToReplace + r"\b", varName, self.output, flags=re.I | re.M)
 
+		# Globals
+		for m in re.finditer(r"\s*(?:Public|Private|Protected)\s*(?:Dim|Set|Const)?\s*(\w+)\s*As", self.output, flags = re.I|re.M):
+			varName = randomString(random.randint(4,12))
+			varToReplace = m.group(1)
+			info("Variable name obfuscated: '%s' => '%s'" % (varToReplace, varName))
+			self.output = re.sub(r"\b" + varToReplace + r"\b", varName, self.output, flags=re.I | re.M)			
+
+		# Functions
 		for m in re.finditer(r"\s*(?:Public|Private|Protected|Friend)?\s*(?:Sub|Function)\s+(\w+)\s*\(", self.output, flags = re.I|re.M):
 			varName = randomString(random.randint(4,12))
 			varToReplace = m.group(1)
 			if varToReplace in RESERVED_NAMES:
 				continue
 			info("Function name obfuscated: '%s' => '%s'" % (varToReplace, varName))
-			self.output = self.output.replace(varToReplace, varName)
+			self.output = re.sub(r"\b" + varToReplace + r"\b", varName, self.output, flags=re.I | re.M)
 
 	def obfuscateNumber(self, num):
 		rnd1 = random.randint(0, 3333)
