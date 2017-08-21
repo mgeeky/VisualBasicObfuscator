@@ -80,6 +80,7 @@ class ScriptObfuscator():
 
 	def randomizeVariablesAndFunctions(self):
 		for m in re.finditer(r"(?:Dim|Set|Const)\s*(\w+)\s*(?:As|=)?", self.output, flags = re.I|re.M):
+>>>>>>> a4328b74fa161bbee158dec13de4b5c5e9984963
 			varName = randomString(random.randint(4,12))
 			varToReplace = m.group(1)
 			info("Variable name obfuscated: '%s' => '%s'" % (varToReplace, varName))
