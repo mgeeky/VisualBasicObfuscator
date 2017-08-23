@@ -280,7 +280,7 @@ def parse_options(argv):
 	parser.add_argument("-g", "--garbage", help="Percent of garbage to append to the obfuscated code. Default: 12%%. 0 to disable.", default=config['garbage_perc'], type=float)
 	parser.add_argument("-m", "--min-var-len", dest='min_var_len', help="Minimum length of variable to include in name obfuscation. Too short value may break the original script. Default: 5.", default=config['min_var_length'], type=int)
 	group.add_argument("-v", "--verbose", help="Verbose output.", action="store_true")
-	group.add_argument("-q", "--quiet", help="No output.", action="store_true")
+	group.add_argument("-q", "--quiet", help="No unnecessary output.", action="store_true")
 
 	args = parser.parse_args()
 
@@ -296,6 +296,9 @@ def parse_options(argv):
 	else:
 		config['file'] = args.input_file
 
+	if args.quiet:
+		config['quiet'] = True
+
 	if args.garbage < 0.0 or args.garbage > 100.0:
 		err("Garbage parameter must be in range (0, 100)!")
 		return False
@@ -310,13 +313,14 @@ def parse_options(argv):
 	return True
 
 def main(argv):
+
+	if not parse_options(argv):
+		return False
+		
 	out('''
 		Visual Basic script obfuscator for penetration testing usage.
 	Mariusz B. / mgeeky, '17
 ''')
-
-	if not parse_options(argv):
-		return False
 
 	ok('Input file:\t\t"%s"' % config['file'])
 	if config['output']:
