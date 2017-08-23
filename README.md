@@ -4,7 +4,7 @@ Visual Basic Code universal Obfuscator intended to be used during penetration te
 ```
 $ ./obfuscate.py -h 
 usage: obfuscate.py [-h] [-o OUTPUT] [-g GARBAGE | -G] [-m MIN_VAR_LEN]
-                    [-v | -q]
+                    [-r RESERVED] [-v | -q]
                     input_file
 
 Attempts to obfuscate an input visual basic script in order to prevent curious
@@ -25,6 +25,11 @@ optional arguments:
                         Minimum length of variable to include in name
                         obfuscation. Too short value may break the original
                         script. Default: 5.
+  -r RESERVED, --reserved RESERVED
+                        Reserved word/name that should not be obfuscated (in
+                        case some name has to be in original script cause it
+                        may break it otherwise. Repeat the option for more
+                        words.
   -v, --verbose         Verbose output.
   -q, --quiet           No unnecessary output.
 
