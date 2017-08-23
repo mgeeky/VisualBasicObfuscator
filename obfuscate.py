@@ -7,23 +7,6 @@ import string
 import random
 import argparse
 
-RESERVED_NAMES = (
-	"AutoExec",
-	"AutoOpen",
-	"DocumentOpen",
-	"AutoExit",
-	"AutoClose",
-	"Document_Close",
-	"DocumentBeforeClose",
-	"Document_Open",
-	"Document_BeforeClose",
-	"Auto_Open",
-	"Workbook_Open",
-	"Workbook_Activate",
-	"Auto_Close",
-	"Workbook_Close"
-)
-
 config = {
 	'verbose' : False,
 	'quiet' : False,
@@ -31,6 +14,7 @@ config = {
 	'output' : '',
 	'garbage_perc' : 12.0,
 	'min_var_length' : 5,
+	'custom_reserved_words': []
 }
 
 def out(x):
@@ -52,11 +36,29 @@ def ok(x):
 
 class ScriptObfuscator():
 
-	def __init__(self, garbage_perc, min_var_length):
+	RESERVED_NAMES = (
+		"AutoExec",
+		"AutoOpen",
+		"DocumentOpen",
+		"AutoExit",
+		"AutoClose",
+		"Document_Close",
+		"DocumentBeforeClose",
+		"Document_Open",
+		"Document_BeforeClose",
+		"Auto_Open",
+		"Workbook_Open",
+		"Workbook_Activate",
+		"Auto_Close",
+		"Workbook_Close"
+	)
+
+	def __init__(self, reserved_words, garbage_perc, min_var_length):
 		self.input = ''
 		self.output = ''
 		self.garbage_perc = garbage_perc
 		self.min_var_length = min_var_length
+		self.reserved_words = reserved_words
 
 	def obfuscate(self, inp):
 		self.input = inp
@@ -92,6 +94,7 @@ class ScriptObfuscator():
 			varToReplace = filter(lambda x: x and len(x)>0, m.groups())[0]
 
 			if len(varToReplace) < self.min_var_length: continue
+			if varToReplace in self.reserved_words: continue
 			info("Variable name obfuscated (context: \"%s\"): '%s' => '%s'" % (m.group(0).strip(), varToReplace, varName))
 			self.output = re.sub(r"\b" + varToReplace + r"\b", varName, self.output, flags=re.I | re.M)
 
@@ -100,6 +103,7 @@ class ScriptObfuscator():
 			varName = randomString(random.randint(4,12))
 			varToReplace = filter(lambda x: x and len(x)>0, m.groups())[0]
 
+			if varToReplace in self.reserved_words: continue
 			if len(varToReplace) < self.min_var_length: continue
 			info("Global name obfuscated (context: \"%s\"): '%s' => '%s'" % (m.group(0).strip(), varToReplace, varName))
 			self.output = re.sub(r"\b" + varToReplace + r"\b", varName, self.output, flags=re.I | re.M)			
@@ -109,8 +113,8 @@ class ScriptObfuscator():
 			varName = randomString(random.randint(4,12))
 			varToReplace = m.group(1)
 			if len(varToReplace) < self.min_var_length: continue
-			if varToReplace in RESERVED_NAMES:
-				continue
+			if varToReplace in self.reserved_words: continue
+			if varToReplace in ScriptObfuscator.RESERVED_NAMES: continue
 			info("Function name obfuscated (context: \"%s\"): '%s' => '%s'" % (m.group(0).strip(), varToReplace, varName))
 			self.output = re.sub(r"\b" + varToReplace + r"\b", varName, self.output, flags=re.I | re.M)
 
@@ -281,6 +285,7 @@ def parse_options(argv):
 	group2.add_argument("-g", "--garbage", help="Percent of garbage to append to the obfuscated code. Default: 12%%.", default=config['garbage_perc'], type=float)
 	group2.add_argument("-G", "--no-garbage", dest="nogarbage", help="Don't append any garbage.", action='store_true')
 	parser.add_argument("-m", "--min-var-len", dest='min_var_len', help="Minimum length of variable to include in name obfuscation. Too short value may break the original script. Default: 5.", default=config['min_var_length'], type=int)
+	parser.add_argument("-r", "--reserved", action='append', help='Reserved word/name that should not be obfuscated (in case some name has to be in original script cause it may break it otherwise. Repeat the option for more words.')
 	group.add_argument("-v", "--verbose", help="Verbose output.", action="store_true")
 	group.add_argument("-q", "--quiet", help="No unnecessary output.", action="store_true")
 
@@ -315,6 +320,10 @@ def parse_options(argv):
 	else:
 		config['min_var_len'] = args.min_var_len
 
+	if args.reserved:
+		for r in args.reserved:
+			config['custom_reserved_words'].append(r)
+
 	return True
 
 def main(argv):
@@ -339,7 +348,10 @@ def main(argv):
 
 	out('\n[.] Input file length: %d' % len(contents))
 
-	obfuscator = ScriptObfuscator(config['garbage_perc'], config['min_var_length'])
+	obfuscator = ScriptObfuscator(
+		config['custom_reserved_words'], \
+		config['garbage_perc'], \
+		config['min_var_length'])
 	obfuscated = obfuscator.obfuscate(contents)
 
 	if obfuscated:
