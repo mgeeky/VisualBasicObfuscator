@@ -159,7 +159,7 @@ class ScriptObfuscator():
 			self.output = self.output.replace(orig_string, new_string)
 
 	def obfuscateArrays(self):
-		for m in re.finditer(r"Array\s*\(([^\)]+?)\)", self.output, flags=re.I|re.M):
+		for m in re.finditer(r"\bArray\s*\(([^\)]+?)\)", self.output, flags=re.I|re.M):
 			array = m.group(1)
 			array = array.replace('\n', '').replace('\t', '')
 			info("Array to obfuscate: Array(%s, ..., %s)" % (array[:40], array[-40:]))
