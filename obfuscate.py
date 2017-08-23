@@ -281,11 +281,11 @@ def parse_options(argv):
 	group = parser.add_mutually_exclusive_group()
 	group2 = parser.add_mutually_exclusive_group()
 	parser.add_argument("input_file", help="Visual Basic script to be obfuscated.")
-	parser.add_argument("-o", "--output", help="Output file. Default: stdout")
+	parser.add_argument("-o", "--output", help="Output file. Default: stdout", default='')
 	group2.add_argument("-g", "--garbage", help="Percent of garbage to append to the obfuscated code. Default: 12%%.", default=config['garbage_perc'], type=float)
 	group2.add_argument("-G", "--no-garbage", dest="nogarbage", help="Don't append any garbage.", action='store_true')
 	parser.add_argument("-m", "--min-var-len", dest='min_var_len', help="Minimum length of variable to include in name obfuscation. Too short value may break the original script. Default: 5.", default=config['min_var_length'], type=int)
-	parser.add_argument("-r", "--reserved", action='append', help='Reserved word/name that should not be obfuscated (in case some name has to be in original script cause it may break it otherwise. Repeat the option for more words.')
+	parser.add_argument("-r", "--reserved", action='append', help='Reserved word/name that should not be obfuscated (in case some name has to be in original script cause it may break it otherwise). Repeat the option for more words.')
 	group.add_argument("-v", "--verbose", help="Verbose output.", action="store_true")
 	group.add_argument("-q", "--quiet", help="No unnecessary output.", action="store_true")
 
@@ -302,6 +302,9 @@ def parse_options(argv):
 		return False
 	else:
 		config['file'] = args.input_file
+
+	if args.output:
+		config['output'] = args.output
 
 	if args.quiet:
 		config['quiet'] = True
@@ -355,10 +358,15 @@ def main(argv):
 	obfuscated = obfuscator.obfuscate(contents)
 
 	if obfuscated:
-		out('[.] Obfuscated file length: %d\n' % len(obfuscated))
-		out('-' * 60)
-		print obfuscated
-		out('-' * 60)
+		out('[.] Obfuscated file length: %d' % len(obfuscated))
+		if not config['output']:
+			out('\n' + '-' * 80)
+			print obfuscated
+			out('-' * 80)
+		else:
+			with open(config['output'], 'w') as f:
+				f.write(obfuscated)
+			out('[+] Obfuscated code has been written to: "%s"' % config['output'])
 	else:
 		return False
 
