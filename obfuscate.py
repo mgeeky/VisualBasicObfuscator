@@ -29,7 +29,8 @@ config = {
 	'quiet' : False,
 	'file' : '',
 	'output' : '',
-	'garbage_perc' : 12.0
+	'garbage_perc' : 12.0,
+	'min_var_length' : 5,
 }
 
 def out(x):
@@ -51,10 +52,11 @@ def ok(x):
 
 class ScriptObfuscator():
 
-	def __init__(self, garbage_perc):
+	def __init__(self, garbage_perc, min_var_length):
 		self.input = ''
 		self.output = ''
 		self.garbage_perc = garbage_perc
+		self.min_var_length = min_var_length
 
 	def obfuscate(self, inp):
 		self.input = inp
@@ -82,26 +84,31 @@ class ScriptObfuscator():
 
 	def randomizeVariablesAndFunctions(self):
 		# Variables
-		for m in re.finditer(r"(?:Dim|Set|Const)\s*(\w+)\s*(?:As|=)?", self.output, flags = re.I|re.M):
+		for m in re.finditer(r"(?:(?:Dim|Set|Const)\s+(\w+)\s*(?:As|=)?)|(?:^(\w+)\s+As\s+)", self.output, flags = re.I|re.M):
 			varName = randomString(random.randint(4,12))
-			varToReplace = m.group(1)
-			info("Variable name obfuscated: '%s' => '%s'" % (varToReplace, varName))
+			varToReplace = filter(lambda x: x and len(x)>0, m.groups())[0]
+
+			if len(varToReplace) < self.min_var_length: continue
+			info("Variable name obfuscated (context: \"%s\"): '%s' => '%s'" % (m.group(0).strip(), varToReplace, varName))
 			self.output = re.sub(r"\b" + varToReplace + r"\b", varName, self.output, flags=re.I | re.M)
 
 		# Globals
-		for m in re.finditer(r"\s*(?:Public|Private|Protected)\s*(?:Dim|Set|Const)?\s*(\w+)\s*As", self.output, flags = re.I|re.M):
+		for m in re.finditer(r"\s*(?:(?:Public|Private|Protected)\s*(?:Dim|Set|Const)?\s+(\w+)\s*As)|(?:(?:Private|Protected|Public)\s+Declare\s+PtrSafe?\s*Function\s+(\w+)\s+)", self.output, flags = re.I|re.M):
 			varName = randomString(random.randint(4,12))
-			varToReplace = m.group(1)
-			info("Variable name obfuscated: '%s' => '%s'" % (varToReplace, varName))
+			varToReplace = filter(lambda x: x and len(x)>0, m.groups())[0]
+
+			if len(varToReplace) < self.min_var_length: continue
+			info("Global name obfuscated (context: \"%s\"): '%s' => '%s'" % (m.group(0).strip(), varToReplace, varName))
 			self.output = re.sub(r"\b" + varToReplace + r"\b", varName, self.output, flags=re.I | re.M)			
 
 		# Functions
 		for m in re.finditer(r"\s*(?:Public|Private|Protected|Friend)?\s*(?:Sub|Function)\s+(\w+)\s*\(", self.output, flags = re.I|re.M):
 			varName = randomString(random.randint(4,12))
 			varToReplace = m.group(1)
+			if len(varToReplace) < self.min_var_length: continue
 			if varToReplace in RESERVED_NAMES:
 				continue
-			info("Function name obfuscated: '%s' => '%s'" % (varToReplace, varName))
+			info("Function name obfuscated (context: \"%s\"): '%s' => '%s'" % (m.group(0).strip(), varToReplace, varName))
 			self.output = re.sub(r"\b" + varToReplace + r"\b", varName, self.output, flags=re.I | re.M)
 
 	def obfuscateNumber(self, num):
@@ -132,17 +139,19 @@ class ScriptObfuscator():
 		return out
 
 	def obfuscateString(self, string):
+		if len(string) == 0: return ""
 		new_string = ''
 		for char in string:
 			new_string += self.obfuscateChar(char) + '&'
 		return new_string[:-1]
 
 	def obfuscateStrings(self):
-		for m in re.finditer(r"(\"[^\"]+\")", self.output, flags=re.I|re.M):
+		for m in re.finditer(r"(\"[^\"]+\"|\"\")", self.output, flags=re.I|re.M):
 			orig_string = m.group(1)
-			info("String to obfuscate: " + orig_string)
+			info("String to obfuscate (context: \"%s\"): %s" % (m.group(0).strip().replace('\n',''), orig_string.replace('\n','')))
 			string = orig_string[1:-1]
 			new_string = self.obfuscateString(string)
+			info("\tObfuscated: (%s) => (%s...)" % (string.replace('\n',''), new_string.replace('\n','')[:80]))
 
 			self.output = self.output.replace(orig_string, new_string)
 
@@ -236,7 +245,8 @@ def parse_options(argv):
 	group = parser.add_mutually_exclusive_group()
 	parser.add_argument("input_file", help="Visual Basic script to be obfuscated.")
 	parser.add_argument("-o", "--output", help="Output file. Default: stdout")
-	parser.add_argument("-g", "--garbage", help="Percent of garbage to append to the obfuscated code. Default: 12%%. 0 to disable.", default=12.0, type=float)
+	parser.add_argument("-g", "--garbage", help="Percent of garbage to append to the obfuscated code. Default: 12%%. 0 to disable.", default=config['garbage_perc'], type=float)
+	parser.add_argument("-m", "--min-var-len", dest='min_var_len', help="Minimum length of variable to include in name obfuscation. Too short value may break the original script. Default: 5.", default=config['min_var_length'], type=int)
 	group.add_argument("-v", "--verbose", help="Verbose output.", action="store_true")
 	group.add_argument("-q", "--quiet", help="No output.", action="store_true")
 
@@ -259,6 +269,11 @@ def parse_options(argv):
 		return False
 	else:
 		config['garbage_perc'] = args.garbage
+
+	if args.min_var_len < 0:
+		err("Minimum var length must be greater than 0!")
+	else:
+		config['min_var_len'] = args.min_var_len
 
 	return True
 
@@ -283,7 +298,7 @@ def main(argv):
 
 	out('\n[.] Input file length: %d' % len(contents))
 
-	obfuscator = ScriptObfuscator(config['garbage_perc'])
+	obfuscator = ScriptObfuscator(config['garbage_perc'], config['min_var_length'])
 	obfuscated = obfuscator.obfuscate(contents)
 
 	if obfuscated:
