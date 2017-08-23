@@ -71,13 +71,16 @@ class ScriptObfuscator():
 		# Step 3: Explode string constants
 		self.obfuscateStrings()
 
-		# Step 4: Insert garbage
+		# Step 4: Obfuscate arrays
+		self.obfuscateArrays()
+
+		# Step 5: Insert garbage
 		self.insertGarbage()
 
-		# Step 5: Remove empty lines
+		# Step 6: Remove empty lines
 		self.output = '\n'.join(filter(lambda x: not re.match(r'^\s*$', x), self.output.split('\n')))
 		
-		# Step 6: Remove indents and multi-spaces.
+		# Step 7: Remove indents and multi-spaces.
 		self.output = re.sub(r"\t| {2,}", "", self.output, flags=re.I)
 
 		return self.output
@@ -118,7 +121,7 @@ class ScriptObfuscator():
 			lambda rnd1, num: '%d-%d' % (rnd1+num, rnd1),
 			lambda rnd1, num: '%d-%d' % (2*rnd1+num, 2*rnd1),
 			lambda rnd1, num: '%d-%d' % (3*rnd1+num, 3*rnd1),
-			lambda rnd1, num: '%d+%d' % (num-rnd1, rnd1),
+			lambda rnd1, num: '%d+%d' % (-rnd1, rnd1+num),
 			lambda rnd1, num: '%d/%d' % (rnd1*num, rnd1),
 		)
 
@@ -154,6 +157,35 @@ class ScriptObfuscator():
 			info("\tObfuscated: (%s) => (%s...)" % (string.replace('\n',''), new_string.replace('\n','')[:80]))
 
 			self.output = self.output.replace(orig_string, new_string)
+
+	def obfuscateArrays(self):
+		for m in re.finditer(r"Array\s*\(([^\)]+?)\)", self.output, flags=re.I|re.M):
+			array = m.group(1)
+			array = array.replace('\n', '').replace('\t', '')
+			info("Array to obfuscate: Array(%s, ..., %s)" % (array[:40], array[-40:]))
+			for_nums_allowed = [x for x in string.digits[:]]
+			for_nums_allowed.extend(['a', 'b', 'c', 'd', 'e', 'f', ' ', '-', '_', '&', ','])
+			if all(map(lambda x: x in for_nums_allowed, array)):
+				# Array of numbers
+				array = array.replace(' ', '').replace('_', '')
+				try:
+					info("\tLooks like array of numbers.")
+					new_array = []
+					nums = array.split(',')
+					for num in nums:
+						num = num.strip()
+						new_array.append(self.obfuscateNumber(int(num)))
+
+					obfuscated = 'Array(' + ','.join(new_array) + ')'
+					info("\tObfuscated array: Array(%s, ..., %s)" % (','.join(new_array)[:40], ','.join(new_array)[-40:]))
+					self.output = re.sub(r"Array\s*\(([^\)]+?)\)", obfuscated, self.output, flags=re.I | re.M)
+
+				except ValueError as e:
+					info("\tNOPE. This is not an array of numbers. Culprit: ('%s', context: '%s')" % (num, m.group(0)))
+					continue
+			else:
+				info("\tThis doesn't seems to be array of numbers. Other types not supported at the moment.")
+
 
 	def insertGarbage(self):
 		if self.garbage_perc == 0.0:
