@@ -164,7 +164,8 @@ class ScriptObfuscator():
 
 	def obfuscateArrays(self):
 		for m in re.finditer(r"\bArray\s*\(([^\)]+?)\)", self.output, flags=re.I|re.M):
-			array = m.group(1)
+			orig_array = m.group(1)
+			array = orig_array
 			array = array.replace('\n', '').replace('\t', '')
 			info("Array to obfuscate: Array(%s, ..., %s)" % (array[:40], array[-40:]))
 			for_nums_allowed = [x for x in string.digits[:]]
@@ -182,7 +183,7 @@ class ScriptObfuscator():
 
 					obfuscated = 'Array(' + ','.join(new_array) + ')'
 					info("\tObfuscated array: Array(%s, ..., %s)" % (','.join(new_array)[:40], ','.join(new_array)[-40:]))
-					self.output = re.sub(r"Array\s*\(([^\)]+?)\)", obfuscated, self.output, flags=re.I | re.M)
+					self.output = re.sub(r"Array\s*\(" + orig_array + "\)", obfuscated, self.output, flags=re.I | re.M)
 
 				except ValueError as e:
 					info("\tNOPE. This is not an array of numbers. Culprit: ('%s', context: '%s')" % (num, m.group(0)))
