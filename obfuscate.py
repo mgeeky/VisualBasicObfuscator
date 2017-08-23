@@ -323,7 +323,7 @@ def main(argv):
 		return False
 
 	out('''
-		Visual Basic script obfuscator for penetration testing usage.
+	Visual Basic script obfuscator for penetration testing usage.
 	Mariusz B. / mgeeky, '17
 ''')
 
