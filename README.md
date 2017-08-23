@@ -2,12 +2,10 @@
 Visual Basic Code universal Obfuscator intended to be used during penetration testing assignments.
 
 ```
-$ ./obfuscate.py -h
-
-		Visual Basic script obfuscator for penetration testing usage.
-	Mariusz B. / mgeeky, '17
-
-usage: obfuscate.py [-h] [-o OUTPUT] [-g GARBAGE] [-v | -q] input_file
+$ ./obfuscate.py -h 
+usage: obfuscate.py [-h] [-o OUTPUT] [-g GARBAGE | -G] [-m MIN_VAR_LEN]
+                    [-v | -q]
+                    input_file
 
 Attempts to obfuscate an input visual basic script in order to prevent curious
 eyes from reading over it.
@@ -22,8 +20,13 @@ optional arguments:
   -g GARBAGE, --garbage GARBAGE
                         Percent of garbage to append to the obfuscated code.
                         Default: 12%.
+  -G, --no-garbage      Don't append any garbage.
+  -m MIN_VAR_LEN, --min-var-len MIN_VAR_LEN
+                        Minimum length of variable to include in name
+                        obfuscation. Too short value may break the original
+                        script. Default: 5.
   -v, --verbose         Verbose output.
-  -q, --quiet           No output.
+  -q, --quiet           No unnecessary output.
 
 ```
 
