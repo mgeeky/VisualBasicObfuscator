@@ -45,7 +45,7 @@ There is much work to be done in this tool, so at the moment I'm not describing 
 
 ## Obfuscation example
 
-**Original form** (as comes from [here](https://gist.github.com/mgeeky/3c705560c5041ab20c62f41e917616e6)):
+**Original form** 
 
 ```
 
