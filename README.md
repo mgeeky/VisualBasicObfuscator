@@ -3,7 +3,7 @@ Visual Basic Code universal Obfuscator intended to be used during penetration te
 
 ```
 $ ./obfuscate.py -h 
-usage: obfuscate.py [-h] [-o OUTPUT] [-g GARBAGE | -G] [-m MIN_VAR_LEN]
+usage: obfuscate.py [-h] [-o OUTPUT] [-N | -g GARBAGE | -G] [-m MIN_VAR_LEN]
                     [-r RESERVED] [-v | -q]
                     input_file
 
@@ -17,6 +17,8 @@ optional arguments:
   -h, --help            show this help message and exit
   -o OUTPUT, --output OUTPUT
                         Output file. Default: stdout
+  -N, --normalize       Don't perform obfuscation, do only code normalization
+                        (like long strings transformation).
   -g GARBAGE, --garbage GARBAGE
                         Percent of garbage to append to the obfuscated code.
                         Default: 12%.
@@ -28,11 +30,10 @@ optional arguments:
   -r RESERVED, --reserved RESERVED
                         Reserved word/name that should not be obfuscated (in
                         case some name has to be in original script cause it
-                        may break it otherwise. Repeat the option for more
+                        may break it otherwise). Repeat the option for more
                         words.
   -v, --verbose         Verbose output.
   -q, --quiet           No unnecessary output.
-
 ```
 
 ---
