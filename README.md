@@ -48,79 +48,37 @@ There is much work to be done in this tool, so at the moment I'm not describing 
 **Original form** (as comes from [here](https://gist.github.com/mgeeky/3c705560c5041ab20c62f41e917616e6)):
 
 ```
-Public alreadyLaunched As Integer
 
+Const MY_CONSTANTS = "Some super const"
+Variable As String
+Dim AnotherVariable As String
 
-Private Sub Malware()
+Sub MyTestSub (ByVal arg1 As String)
+    Query = "SELECT * FROM __InstanceModificationEvent WITHIN 60 " _
+    & "WHERE TargetInstance ISA 'Win32_PerfFormattedData_PerfOS_System' " _
+    & "AND TargetInstance.SystemUpTime >= 200 AND " _
+    & "TargetInstance.SystemUpTime < 320"
+
+    Dim arr As Variant
+    arr = Array(1, 2, 3, 4, 5, 6)   ' This is an inline comment
+
     '
-    ' ============================================
+    ' This is a comment
     '
-    ' Enter here your malware code here.
-    ' It will be started on auto open surely.
-    '
-    ' ============================================
+    Dim longString
+    longString = "this is some very long string concatenated."
+    longString = longString + "this is some very long string concatenated."
+    longString = longString + "this is some very long string concatenated."
+    longString = longString + "this is some very long string concatenated."
+    longString = longString + "this is some very long string concatenated."
+    longString = longString + "this is some very long string concatenated."
 
-    MsgBox ("Here comes the malware!")
-
-    ' ============================================
-
-End Sub
-
-
-Private Sub Launch()
-    If alreadyLaunched = True Then
-        Exit Sub
+    Dim somecondition As Boolean
+    somecondition = False
+    If somecondition <> True Then
+        End Sub
     End If
-    Malware
-    SubstitutePage
-    alreadyLaunched = True
-End Sub
 
-Private Sub SubstitutePage()
-    '
-    ' This routine will take the entire Document's contents,
-    ' delete them and insert in their place contents defined in
-    ' INSERT -> Quick Parts -> AutoText -> named as in `autoTextTemplateName`
-    '
-    Dim doc As Word.Document
-    Dim firstPageRange As Range
-    Dim rng As Range
-    Dim autoTextTemplateName As String
-
-    ' This is the name of the defined AutoText prepared in the document,
-    ' to be inserted in place of previous contents.
-    autoTextTemplateName = "RealDoc"
-
-    Set firstPageRange = Word.ActiveDocument.Range
-    firstPageRange.Select
-    Selection.WholeStory
-    Selection.Delete Unit:=wdCharacter, Count:=1
-
-    Set doc = ActiveDocument
-    Set rng = doc.Sections(1).Range
-    doc.AttachedTemplate.AutoTextEntries(autoTextTemplateName).Insert rng, True
-    doc.Save
-
-End Sub
-
-Sub AutoOpen()
-    ' Becomes launched as first on MS Word
-    Launch
-End Sub
-
-Sub Document_Open()
-    ' Becomes launched as second, another try, on MS Word
-    Launch
-End Sub
-
-Sub Auto_Open()
-    ' Becomes launched as first on MS Excel
-    Launch
-End Sub
-
-Sub Workbook_Open()
-    ' Becomes launched as second, another try, on MS Excel
-    Launch
 End Sub
 ```
 
@@ -129,61 +87,35 @@ End Sub
 **Obfuscated form**:
 
 ```
-Public JlN7SFfGa As Integer
-Private Sub gYx6oac()
-MsgBox (Chr(72)&Chr(&H65)&Chr(114)&Chr(101)&Chr(Int("32"))&Chr(99)&Chr(Int("&H6f"))&Chr(109)&Chr(101)&Chr(115)&Chr(6710-6678)&Chr(9995-9879)&Chr(104)&Chr(Int("101"))&Chr(Int("32"))&"m"&Chr(1849-1752)&Chr(Int("108"))&"w"&Chr(97)&Chr(114)&Chr(&H65)&Chr(&H21))
+'Dim aVfvyu
+'Set aVfvyu = Chr(Int("117"))&Chr(88)&Chr(Int("109"))&Chr(Int("&H62"))&"f"&Chr(-2940+2988)&"U"&"X"&Chr(-340+415)&Chr(Int("77"))&Chr(&H52)&Chr(Int("&H59"))&Chr(143330/1303)&Chr(&H65)&"y"
+'Dim ISTfUwgvSFrf
+'Set ISTfUwgvSFrf = "b"&Chr(Int("117"))&Chr(Int("67"))&"m"&"9"&Chr(2968-2892)&Chr(&H52)&Chr(&H56)&Chr(66)&Chr(&H4a)&"P"&Chr(Int("56"))&Chr(Int("&H42"))&Chr(115)&Chr(6602-6513)&Chr(88)&Chr(Int("&H75"))
+Const pyMy8dwtX = Chr(Int("83"))&"o"&"m"&Chr(Int("101"))&Chr(38560/1205)&Chr(Int("&H73"))&Chr(Int("&H75"))&Chr(112)&"e"&Chr(114)&Chr(&H20)&Chr(99)&Chr(111)&Chr(&H6e)&Chr(Int("115"))&Chr(Int("&H74"))
+HFaqG1lD6KKx As String
+Dim Ano
+K9FRiZbopz4n = Chr(&H53)&Chr(Int("&H45"))&Chr(&H4c)&Chr(69)&Chr(Int("67"))&Chr(Int("84"))&Chr(32)&Chr(&H2a)&Chr(32)&Chr(2509-2439)&Chr(82)&"O"&Chr(-100+177)&Chr(Int("32"))&"_"&Chr(-2119+2214)&Chr(Int("&H49"))&Chr(Int("110"))&Chr(Int("&H73"))&Chr(Int("&H74"))&Chr(&H61)&"n"&Chr(99)&"e"&Chr(Int("77"))&Chr(111)&Chr(Int("100"))&Chr(Int("&H69"))&"f"&Chr(Int("&H69"))&Chr(Int("99"))&Chr(Int("97"))&"t"&Chr(1680-1575)&Chr(Int("&H6f"))&Chr(&H6e)&Chr(Int("69"))&Chr(118)&Chr(Int("101"))&"n"&"t"&Chr(&H20)&"W"&Chr(73)&"T"&Chr(72)&Chr(Int("&H49"))&Chr(Int("78"))&Chr(Int("&H20"))&Chr(3113-3059)&Chr(48)&Chr(32)&Chr(-2805+2892)&Chr(Int("&H48"))&Chr(Int("69"))&"R"&Chr(Int("69"))&Chr(&H20)&Chr(&H54)&Chr(174891/1803)&Chr(114)&Chr(&H67)&"e"&Chr(Int("116"))&Chr(&H49)&Chr(Int("&H6e"))&Chr(Int("&H73"))&Chr(Int("&H74"))&Chr(8479-8382) _
+& Chr(Int("&H6e"))
+K9FRiZbopz4n = K9FRiZbopz4n + Chr(192753/1947)&Chr(101)&Chr(Int("32"))&Chr(73)&Chr(83)&Chr(65)&Chr(86016/2688)&"
+& "t"
+K9FRiZbopz4n = K9FRiZbopz4n + Chr(Int("&H65"))&Chr(&H6d)&Chr(Int("&H55"))&Chr(112)&"T"&Chr(Int("105"))&Chr(&H6d)&Chr(Int("101"))&Chr(&H20)&Chr(Int("&H3e"))&Chr(1833-1772)&" "&Chr(Int("&H32"))&Chr(&H30)&"0"&Chr(Int("&H20"))&Chr(Int("65"))&Chr(&H4e)&Chr(68)&Chr(Int("&H20"))&Chr(Int("84"))&"a"&"r"&Chr(Int("103"))&Chr(&H65)&Chr(Int("&H74"))&Chr(&H49)&Chr(Int("&H6e"))&Chr(9433-9318)&Chr(&H74)&"a"&Chr(110)&Chr(99)&Chr(&H65)&Chr(Int("&H2e"))&Chr(Int("83"))&Chr(&H79)&Chr(Int("115"))&Chr(116)&"e"&"m"&Chr(Int("&H55"))&Chr(&H70)&Chr(84)&Chr(105)&Chr(Int("109"))&Chr(&H65)&Chr(32)&Chr(7233-7173)&Chr(32)&Chr(51)&Chr(Int("50"))&"0"
+Dim arr As Variant
+arr = Array(8812-8811,1048/524,30/10,2601-2597,-1938+1943,6)
+Dim JNmFJc8DgvM2
+JNmFJc8DgvM2 = Chr(Int("116"))&Chr(Int("104"))&Chr(Int("105"))&"s"&Chr(32)&Chr(105)&Chr(Int("&H73"))&" "&Chr(6213-6098)&Chr(Int("111"))&Chr(&H6d)&Chr(2371-2270)&Chr(4910-4878)&Chr(118)&"e"&Chr(114)&Chr(121)&Chr(-32+64)&"l"&Chr(Int("&H6f"))&Chr(Int("&H6e"))&Chr(&H67)&Chr(&H20)&Chr(&H73)&Chr(Int("&H74"))&Chr(114)&Chr(Int("105"))&Chr(Int("&H6e"))&Chr(&H67)&" "&Chr(504-405)&Chr(8358-8247)&Chr(Int("110"))&Chr(&H63)&Chr(Int("97"))&Chr(116)&Chr(&H65)&Chr(110)&Chr(97)&Chr(Int("&H74"))&Chr(Int("&H65"))&Chr(Int("100"))&"."
+'Dim bsCHuctI
+'Set bsCHuctI = "s"&"U"&"t"&Chr(67)&Chr(&H71)&Chr(Int("66"))&"m"&Chr(Int("112"))&Chr(&H41)&Chr(Int("73"))&Chr(&H55)&Chr(Int("&H6b"))&"d"&"Y"&Chr(Int("&H4b"))&Chr(155344/2128)&Chr(&H59)&Chr(Int("&H61"))&Chr(Int("119"))&Chr(219300/2924)&Chr(65)&Chr(63291/1241)&Chr(Int("&H7a"))&Chr(Int("&H39"))&Chr(140679/1617)&Chr(Int("&H6e"))&Chr(&H6d)&Chr(99)&Chr(71)
+JNmFJc8DgvM2 = JNmFJc8DgvM2 + Chr(Int("116"))&Chr(Int("104"))&Chr(Int("105"))&"s"&Chr(32)&Chr(105)&Chr(Int("&H73"))&" "&Chr(6213-6098)&Chr(Int("111"))&Chr(&H6d)&Chr(2371-2270)&Chr(4910-4878)&Chr(118)&"e"&Chr(114)&Chr(121)&Chr(-32+64)&"l"&Chr(Int("&H6f"))&Chr(Int("&H6e"))&Chr(&H67)&Chr(&H20)&Chr(&H73)&Chr(Int("&H74"))&Chr(114)&Chr(Int("105"))&Chr(Int("&H6e"))&Chr(&H67)&" "&Chr(504-405)&Chr(8358-8247)&Chr(Int("110"))&Chr(&H63)&Chr(Int("97"))&Chr(116)&Chr(&H65)&Chr(110)&Chr(97)&Chr(Int("&H74"))&Chr(Int("&H65"))&Chr(Int("100"))&"."
+JNmFJc8DgvM2 = JNmFJc8DgvM2 + Chr(Int("116"))&Chr(Int("104"))&Chr(Int("105"))&"s"&Chr(32)&Chr(105)&Chr(Int("&H73"))&" "&Chr(6213-6098)&Chr(Int("111"))&Chr(&H6d)&Chr(2371-2270)&Chr(4910-4878)&Chr(118)&"e"&Chr(114)&Chr(121)&Chr(-32+64)&"l"&Chr(Int("&H6f"))&Chr(Int("&H6e"))&Chr(&H67)&Chr(&H20)&Chr(&H73)&Chr(Int("&H74"))&Chr(114)&Chr(Int("105"))&Chr(Int("&H6e"))&Chr(&H67)&" "&Chr(504-405)&Chr(8358-8247)&Chr(Int("110"))&Chr(&H63)&Chr(Int("97"))&Chr(116)&Chr(&H65)&Chr(110)&Chr(97)&Chr(Int("&H74"))&Chr(Int("&H65"))&Chr(Int("100"))&"."
+JNmFJc8DgvM2 = JNmFJc8DgvM2 + Chr(Int("116"))&Chr(Int("104"))&Chr(Int("105"))&"s"&Chr(32)&Chr(105)&Chr(Int("&H73"))&" "&Chr(6213-6098)&Chr(Int("111"))&Chr(&H6d)&Chr(2371-2270)&Chr(4910-4878)&Chr(118)&"e"&Chr(114)&Chr(121)&Chr(-32+64)&"l"&Chr(Int("&H6f"))&Chr(Int("&H6e"))&Chr(&H67)&Chr(&H20)&Chr(&H73)&Chr(Int("&H74"))&Chr(114)&Chr(Int("105"))&Chr(Int("&H6e"))&Chr(&H67)&" "&Chr(504-405)&Chr(8358-8247)&Chr(Int("110"))&Chr(&H63)&Chr(Int("97"))&Chr(116)&Chr(&H65)&Chr(110)&Chr(97)&Chr(Int("&H74"))&Chr(Int("&H65"))&Chr(Int("100"))&"."
+JNmFJc8DgvM2 = JNmFJc8DgvM2 + Chr(Int("116"))&Chr(Int("104"))&Chr(Int("105"))&"s"&Chr(32)&Chr(105)&Chr(Int("&H73"))&" "&Chr(6213-6098)&Chr(Int("111"))&Chr(&H6d)&Chr(2371-2270)&Chr(4910-4878)&Chr(118)&"e"&Chr(114)&Chr(121)&Chr(-32+64)&"l"&Chr(Int("&H6f"))&Chr(Int("&H6e"))&Chr(&H67)&Chr(&H20)&Chr(&H73)&Chr(Int("&H74"))&Chr(114)&Chr(Int("105"))&Chr(Int("&H6e"))&Chr(&H67)&" "&Chr(504-405)&Chr(8358-8247)&Chr(Int("110"))&Chr(&H63)&Chr(Int("97"))&Chr(116)&Chr(&H65)&Chr(110)&Chr(97)&Chr(Int("&H74"))&Chr(Int("&H65"))&Chr(Int("100"))&"."
+JNmFJc8DgvM2 = JNmFJc8DgvM2 + Chr(Int("116"))&Chr(Int("104"))&Chr(Int("105"))&"s"&Chr(32)&Chr(105)&Chr(Int("&H73"))&" "&Chr(6213-6098)&Chr(Int("111"))&Chr(&H6d)&Chr(2371-2270)&Chr(4910-4878)&Chr(118)&"e"&Chr(114)&Chr(121)&Chr(-32+64)&"l"&Chr(Int("&H6f"))&Chr(Int("&H6e"))&Chr(&H67)&Chr(&H20)&Chr(&H73)&Chr(Int("&H74"))&Chr(114)&Chr(Int("105"))&Chr(Int("&H6e"))&Chr(&H67)&" "&Chr(504-405)&Chr(8358-8247)&Chr(Int("110"))&Chr(&H63)&Chr(Int("97"))&Chr(116)&Chr(&H65)&Chr(110)&Chr(97)&Chr(Int("&H74"))&Chr(Int("&H65"))&Chr(Int("100"))&"."
+Dim GkSxDgf As Boolean
+GkSxDgf = False
+If GkSxDgf <> True Then
 End Sub
-Private Sub T3pFL()
-If JlN7SFfGa = True Then
-Exit Sub
 End If
-'Dim u3mUck
-'Set u3mUck = "Z"&Chr(Int("83"))&Chr(71)&"8"&Chr(&H62)&"U"&Chr(&H6f)&Chr(Int("&H4f"))&"H"&"c"&Chr(91+6)&Chr(103)&Chr(114)&"A"&"y"&"d"&"O"&Chr(76)&Chr(57)&Chr(5862-5814)&Chr(56100/1100)&Chr(Int("&H6f"))&"f"&Chr(138376/2824)&"s"&Chr(Int("55"))&Chr(75)&Chr(&H44)
-gYx6oac
-V31A0Upk
-JlN7SFfGa = True
 End Sub
-Private Sub V31A0Upk()
-'Dim W6Fb
-'Set W6Fb = Chr(Int("&H61"))&Chr(97)&"x"&Chr(Int("106"))&Chr(Int("&H6e"))&Chr(&H48)&Chr(Int("50"))&Chr(67)&Chr(Int("&H58"))&"N"&"l"&Chr(89)&Chr(Int("&H49"))&Chr(Int("65"))&Chr(&H30)&"8"&Chr(117)&"o"
-Dim Yir4Xyg As Word.Document
-Dim xIFlARxw9 As Range
-'Dim ynGkjkU4wynR
-'Set ynGkjkU4wynR = Chr(Int("&H77"))&Chr(Int("113"))&Chr(172050/1550)&Chr(Int("121"))&"5"&Chr(&H31)&Chr(69)&Chr(Int("&H30"))&Chr(Int("&H33"))&"o"&Chr(Int("&H45"))&Chr(4942-4824)&Chr(-2536+2652)
-Dim j92Aq As Range
-Dim N931oGuPbNa As String
-N931oGuPbNa = Chr(Int("&H52"))&"e"&Chr(Int("&H61"))&Chr(906-798)&Chr(Int("&H44"))&Chr(Int("&H6f"))&"c"
-Set xIFlARxw9 = Word.ActiveDocument.Range
-xIFlARxw9.Select
-Selection.WholeStory
-Selection.Delete rVgJ2570=wdCharacter, rGG5pP3KL2=1
-Set Yir4Xyg = ActiveDocument
-Set j92Aq = Yir4Xyg.Sections(1).Range
-Yir4Xyg.AttachedTemplate.AutoTextEntries(N931oGuPbNa).Insert j92Aq, True
-Yir4Xyg.Save
-'Dim h9RGN2pbYn
-'Set h9RGN2pbYn = "J"&Chr(9055-8943)&Chr(77)&Chr(240198/2451)&Chr(82)&Chr(Int("&H63"))&Chr(Int("&H71"))&Chr(Int("&H53"))&Chr(114)&Chr(65)&Chr(114)&Chr(&H52)&"e"&Chr(112)&Chr(111)&Chr(Int("113"))&Chr(&H62)&"s"&Chr(117)&Chr(Int("90"))
-End Sub
-'Dim TkUaeM0Trg
-'Set TkUaeM0Trg = Chr(Int("&H77"))&"8"&"q"&"3"&"c"&Chr(&H36)&Chr(Int("&H5a"))&Chr(Int("&H64"))&Chr(51)&Chr(Int("68"))&Chr(2446-2376)
-Sub AutoOpen()
-T3pFL
-End Sub
-Sub Document_Open()
-T3pFL
-End Sub
-Sub Auto_Open()
-T3pFL
-End Sub
-'Dim ipoqLK
-'Set ipoqLK = Chr(&H6d)&Chr(Int("&H31"))&Chr(&H4d)&Chr(Int("109"))&Chr(57)&Chr(Int("&H72"))&Chr(5286-5198)&Chr(Int("57"))&Chr(Int("&H33"))&"Y"&Chr(Int("89"))&Chr(2400-2322)&Chr(&H52)&Chr(&H74)&"G"&"w"&Chr(49)&Chr(&H39)&Chr(68)&Chr(Int("52"))&Chr(Int("118"))
-'Dim b3rTO
-'Set b3rTO = Chr(67)&Chr(-1125+1173)&Chr(4944-4846)&Chr(Int("99"))&Chr(2448-2348)&Chr(84)&Chr(&H6a)&"v"&Chr(Int("&H6a"))&"r"&Chr(Int("100"))&Chr(Int("&H36"))&Chr(Int("&H39"))&"Z"&"f"
-Sub Workbook_Open()
-T3pFL
-End Sub
-'Dim tQEK5
-'Set tQEK5 = Chr(Int("&H6f"))&Chr(51)&Chr(88)&Chr(2538-2459)&Chr(97)&"9"&Chr(Int("82"))&Chr(Int("53"))&Chr(Int("85"))&Chr(Int("&H31"))&Chr(Int("103"))&Chr(&H69)&Chr(&H4a)&Chr(Int("90"))&Chr(&H45)&Chr(-161+214)&Chr(224532/2673)&"b"
 ```
 
 ---

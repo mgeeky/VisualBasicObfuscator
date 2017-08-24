@@ -68,7 +68,7 @@ class ScriptObfuscator():
 	LONG_LINES_REGEX = r"\s*(?:(?:(\w+)\s*=)|&)\s*\"([^\"]+)\"\s*_?"
 
 	# Dim var ; Dim Var As Type ; Set Var = [...] ; Const Var = [...]
-	VARIABLES_REGEX = r"(?:(?:Dim|Set|Const)\s+(\w+)\s*(?:As|=)?)|(?:^(\w+)\s+As\s+)"
+	VARIABLES_REGEX = r"(?:(?:\s*(\w+)\s*=)|(?:Dim|Set|Const)\s+(\w+)\s*(?:As|=)?)|(?:^(\w+)\s+As\s+)"
 
 	# Dim Var1, var2, va3 As Type
 	VARIABLE_DECLARATIONS_REGEX = r"Dim\s+(?:(?:\s*,\s*)?(\w+)(?:\s*,\s*)?)+"
@@ -93,14 +93,11 @@ class ScriptObfuscator():
 		self.output = inp
 
 		# Normalization processes, not obfuscating at the moment.
-		# 	Step 0a: Merge long string lines and split them to concatenate.
+		# 	Step 1: Merge long string lines and split them to concatenate.
 		self.mergeAndConcatLongLines()
 
 		if self.normalize_only:
 			return self.output
-
-		# Step 1: Remove comments
-		self.output = re.sub(ScriptObfuscator.COMMENT_REGEX, "", self.output, flags=re.I)
 
 		# Step 2: Rename used variables
 		self.randomizeVariablesAndFunctions()
@@ -111,17 +108,39 @@ class ScriptObfuscator():
 		# Step 4: Obfuscate arrays
 		self.obfuscateArrays()
 
-		# Step 5: Insert garbage
+		# Step 5: Remove comments
+		self.removeComments()
+
+		# Step 6: Insert garbage
 		self.insertGarbage()
 
-		# Step 6: Remove empty lines
+		# Step 7: Remove empty lines
 		self.output = '\n'.join(filter(lambda x: not re.match(r'^\s*$', x), self.output.split('\n')))
 		
-		# Step 7: Remove indents and multi-spaces.
+		# Step 8: Remove indents and multi-spaces.
 		if not DEBUG:
 			self.output = re.sub(r"\t| {2,}", "", self.output, flags=re.I)
 
 		return self.output
+
+	def removeComments(self):
+		lines = self.output.split('\n')
+		for i in range(len(lines)):
+			line = lines[i]
+			m = re.search(r"('.*)", lines[i], flags=re.I)
+			if not m: 
+				continue
+			n = re.search(r"(\"[^\"']*('[^\"]*)\")", lines[i], flags=re.I)
+			if not n:
+				lines[i] = line.replace(m.group(1), '')
+				info("Found comment: (%s)" % m.group(1))
+			else:
+				if m.group(1) not in n.group(1):
+					info("Found comment: (%s)" % m.group(1))
+					lines[i] = line.replace(m.group(1), '')
+
+
+		self.output = '\n'.join(lines)
 
 	def detectFunctionBoundaries(self):
 		pos = 0
@@ -216,7 +235,7 @@ class ScriptObfuscator():
 				fr = s * SPLIT
 				to = fr + SPLIT
 				if newLine == '':
-					newLine += '%s = "%s"\n' % (varName, longLine[fr:to])
+					newLine += '\n%s = "%s"\n' % (varName, longLine[fr:to])
 				else:
 					newLine += '%s = %s + "%s"\n' % (varName, varName, longLine[fr:to])
 
@@ -227,6 +246,7 @@ class ScriptObfuscator():
 			if pos >= len(self.output): break
 
 		for (orig, new) in replaces:
+			info("REPLACING: (%s) => (%s)" % (orig, new))
 			self.output = self.output.replace(orig, new)
 
 
