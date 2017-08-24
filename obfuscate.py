@@ -14,7 +14,8 @@ config = {
 	'output' : '',
 	'garbage_perc' : 12.0,
 	'min_var_length' : 5,
-	'custom_reserved_words': []
+	'custom_reserved_words': [],
+	'normalize_only': False
 }
 
 def out(x):
@@ -53,9 +54,10 @@ class ScriptObfuscator():
 		"Workbook_Close"
 	)
 
-	def __init__(self, reserved_words, garbage_perc, min_var_length):
+	def __init__(self, normalize_only, reserved_words, garbage_perc, min_var_length):
 		self.input = ''
 		self.output = ''
+		self.normalize_only = normalize_only
 		self.garbage_perc = garbage_perc
 		self.min_var_length = min_var_length
 		self.reserved_words = reserved_words
@@ -63,6 +65,13 @@ class ScriptObfuscator():
 	def obfuscate(self, inp):
 		self.input = inp
 		self.output = inp
+
+		# Normalization processes, not obfuscating at the moment.
+		# 	Step 0a: Merge long string lines and split them to concatenate.
+		self.mergeAndConcatLongLines()
+
+		if self.normalize_only:
+			return self.output
 
 		# Step 1: Remove comments
 		self.output = re.sub(r"(?<!\"[^\"])'(.*)", "", self.output, flags=re.I)
@@ -86,6 +95,54 @@ class ScriptObfuscator():
 		self.output = re.sub(r"\t| {2,}", "", self.output, flags=re.I)
 
 		return self.output
+
+	def mergeAndConcatLongLines(self):
+		SPLIT = 80
+		rex = r"(?:(?:(\w+)\s*=\s*)|(?:\s*&\s+))\"([^\"]+)\"(?:\s+_)?"
+		pos = 0
+		replaces = []
+
+		for m in re.finditer(rex, self.output[pos:], flags=re.I|re.M):
+			varName = m.group(1)
+			longLine = m.group(2)
+			if len(longLine) < SPLIT: continue
+			
+			pos = m.span()[1]
+			endOfLine = pos + self.output[pos:].find('\n')
+			suffix = self.output[pos:endOfLine + 1]
+			
+			lineStart = m.span()[0]
+			pos += len(suffix)		
+			lineStop = pos
+
+			while True:
+				if pos >= len(self.output): break
+				endOfLine = pos + self.output[pos:].find('\n')
+				n = re.match(rex, self.output[pos:endOfLine], flags=re.I|re.M)
+				pos += endOfLine - pos + 1
+				if not n: 
+					break
+
+				longLine += n.group(2)
+				
+			lineStop = pos
+			origLine = self.output[lineStart:lineStop]
+			info("Merging long string line (var: %s, len: %d): '%s...%s'" % (varName, len(longLine), longLine[:40], longLine[-40:]))
+			newLine = ''
+			for s in range(len(longLine) / SPLIT + 1):
+				fr = s * SPLIT
+				to = fr + SPLIT
+				if newLine == '':
+					newLine += '%s = "%s"\n' % (varName, longLine[fr:to])
+				else:
+					newLine += '%s = %s + "%s"\n' % (varName, varName, longLine[fr:to])
+
+			replaces.append((origLine, newLine))
+			if pos >= len(self.output): break
+
+		for (orig, new) in replaces:
+			self.output = self.output.replace(orig, new)
+
 
 	def randomizeVariablesAndFunctions(self):
 		# Variables
@@ -283,6 +340,7 @@ def parse_options(argv):
 	group2 = parser.add_mutually_exclusive_group()
 	parser.add_argument("input_file", help="Visual Basic script to be obfuscated.")
 	parser.add_argument("-o", "--output", help="Output file. Default: stdout", default='')
+	group2.add_argument("-N", "--normalize", dest="normalize_only", help="Don't perform obfuscation, do only code normalization (like long strings transformation).", action='store_true')
 	group2.add_argument("-g", "--garbage", help="Percent of garbage to append to the obfuscated code. Default: 12%%.", default=config['garbage_perc'], type=float)
 	group2.add_argument("-G", "--no-garbage", dest="nogarbage", help="Don't append any garbage.", action='store_true')
 	parser.add_argument("-m", "--min-var-len", dest='min_var_len', help="Minimum length of variable to include in name obfuscation. Too short value may break the original script. Default: 5.", default=config['min_var_length'], type=int)
@@ -306,6 +364,9 @@ def parse_options(argv):
 
 	if args.output:
 		config['output'] = args.output
+
+	if args.normalize_only:
+		config['normalize_only'] = args.normalize_only
 
 	if args.quiet:
 		config['quiet'] = True
@@ -353,6 +414,7 @@ def main(argv):
 	out('\n[.] Input file length: %d' % len(contents))
 
 	obfuscator = ScriptObfuscator(
+		config['normalize_only'], \
 		config['custom_reserved_words'], \
 		config['garbage_perc'], \
 		config['min_var_length'])
