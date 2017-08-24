@@ -10,6 +10,8 @@ import argparse
 # TODO: Switch this
 DEBUG = False 
 
+MAX_LINE_LENGTH = 1024 - 100
+
 config = {
 	'verbose' : False,
 	'quiet' : False,
@@ -57,12 +59,13 @@ class ScriptObfuscator():
 		"Workbook_Close"
 	)
 
+	COMMENT_REGEX = r"'((?!\").)*$"
 	STRINGS_REGEX = r"(\"(?:[^\"\n]|\"\")+\")"
 
 	FUNCTION_REGEX = r"(?:Public|Private|Protected|Friend)?\s*(?:Sub|Function)\s+(\w+)\s*\(.*\)"
 
 	# var = "value" _\n& "value"
-	LONG_LINES_REGEX = r"(?:(?:(\w+)\s*=\s*)|(?:\s*&\s+))\"([^\"]+)\"(?:\s+_)?"
+	LONG_LINES_REGEX = r"\s*(?:(?:(\w+)\s*=)|&)\s*\"([^\"]+)\"\s*_?"
 
 	# Dim var ; Dim Var As Type ; Set Var = [...] ; Const Var = [...]
 	VARIABLES_REGEX = r"(?:(?:Dim|Set|Const)\s+(\w+)\s*(?:As|=)?)|(?:^(\w+)\s+As\s+)"
@@ -97,7 +100,7 @@ class ScriptObfuscator():
 			return self.output
 
 		# Step 1: Remove comments
-		self.output = re.sub(r"(?<!\"[^\"])'(.*)", "", self.output, flags=re.I)
+		self.output = re.sub(ScriptObfuscator.COMMENT_REGEX, "", self.output, flags=re.I)
 
 		# Step 2: Rename used variables
 		self.randomizeVariablesAndFunctions()
@@ -165,17 +168,18 @@ class ScriptObfuscator():
 		return None
 
 	def mergeAndConcatLongLines(self):
-		SPLIT = 80
+		SPLIT = 70
 		rex = ScriptObfuscator.LONG_LINES_REGEX
 		pos = 0
 		replaces = []
 
-		for m in re.finditer(rex, self.output[pos:], flags=re.I|re.M):
+		while pos < len(self.output):
+			m = re.search(rex, self.output[pos:], flags=re.I|re.M)
+			if not m: break
 			varName = m.group(1)
 			longLine = m.group(2)
-			if len(longLine) < SPLIT: continue
-			
-			pos = m.span()[1]
+			pos += m.span()[1]
+
 			endOfLine = pos + self.output[pos:].find('\n')
 			suffix = self.output[pos:endOfLine + 1]
 			
@@ -186,10 +190,21 @@ class ScriptObfuscator():
 			while True:
 				if pos >= len(self.output): break
 				endOfLine = pos + self.output[pos:].find('\n')
-				n = re.match(rex, self.output[pos:endOfLine], flags=re.I|re.M)
-				pos += endOfLine - pos + 1
+				line = self.output[pos:endOfLine]
+				fault = False
+				if endOfLine < pos:
+					fault = True
+					endOfLine, pos = pos, endOfLine
+					line = self.output[pos:]
+
+				n = re.match(rex, line, flags=re.I|re.M)
 				if not n: 
 					break
+
+				if fault:
+					pos += endOfLine + 1
+				else:
+					pos += endOfLine - pos + 1
 
 				longLine += n.group(2)
 				
@@ -204,6 +219,9 @@ class ScriptObfuscator():
 					newLine += '%s = "%s"\n' % (varName, longLine[fr:to])
 				else:
 					newLine += '%s = %s + "%s"\n' % (varName, varName, longLine[fr:to])
+
+			if len(newLine) < SPLIT:
+				continue
 
 			replaces.append((origLine, newLine))
 			if pos >= len(self.output): break
@@ -284,9 +302,9 @@ class ScriptObfuscator():
 
 	def obfuscateChar(self, char):
 		char_coders = (
+			lambda x: '"{}"'.format(x),
 			lambda x: 'Chr(&H%x)' % ord(x),
 			lambda x: 'Chr(%d)' % ord(x),
-			lambda x: '"{}"'.format(x),
 			lambda x: 'Chr(%s)' % self.obfuscateNumber(ord(x)),
 			lambda x: 'Chr(Int("&H%x"))' % ord(x),
 			lambda x: 'Chr(Int("%d"))' % ord(x),
@@ -303,6 +321,10 @@ class ScriptObfuscator():
 		i = 0
 		while i < len(string):
 			char = string[i]
+
+			if len(new_string.split('\n')[-1]) + 128 > MAX_LINE_LENGTH:
+				new_string = new_string[:-len(delim)] + ' _\n& '
+
 			if i + 1 < len(string):
 				if char == '"' and string[i+1] == '"':
 					i += 2
@@ -317,7 +339,9 @@ class ScriptObfuscator():
 			new_string += self.obfuscateChar(char) + delim
 			i += 1
 
-		return new_string[:-len(delim)]
+		new_string = new_string[:-len(delim)]
+		if new_string.endswith(' _'): new_string = new_string[:-2]
+		return new_string
 
 	def obfuscateStrings(self):
 		replaces = set()
@@ -350,7 +374,7 @@ class ScriptObfuscator():
 
 			info("String to obfuscate (context: {{%s}}): {{%s}}" % (m.group(0).strip(), string))
 			new_string = self.obfuscateString(string)
-			info("\tObfuscated: ({{%s}}) => ({{%s}}...)" % (string, new_string))
+			info("OBFUSCATED:\n\t%s\n\t{{ %s }}\n\t=====>\n\t{{ %s }}\n\t%s\n" % ('^' * 60, string, new_string, '^' * 60))
 
 			replaces.add((orig_string, new_string))
 
@@ -412,6 +436,14 @@ class ScriptObfuscator():
 			inside_func = self.isInsideFunc(pos)
 
 			if i in garbage_lines:
+				if i > 0 and (\
+					(' _' in new_lines[i - 1].rstrip()[-10:]) or \
+					(' _' in new_lines[i - 2].rstrip()[-10:]) or \
+					('&' in lines[j].lstrip()[:5]) \
+				):
+					# Avoid inserting garbage that could break line continuations
+					continue
+
 				comment = True
 				if inside_func:
 					comment = False
