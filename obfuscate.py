@@ -3,6 +3,9 @@
 import re
 import os
 import sys
+import base64
+import struct
+import ctypes
 import string
 import random
 import argparse
@@ -60,7 +63,264 @@ def ok(x, col = ''):
 	col2 = bcolors.BOLD + bcolors.OKGREEN if (config['colors'] and not col) else col
 	out(col2 + '[+] ' + x + bcolors.ENDC)
 
-class ScriptObfuscator():
+
+class BitShuffleStringObfuscator:
+
+	# Based on bits shuffling scheme devised by D. Knuth:
+	#	(method described in D.Knuth's vol.4a chapter 7.1.3)
+	OBFUSCATION_PARAMS = {
+		'mask1': 0x00550055,
+		'mask2': 0x0000cccc,
+		'd1': 7,
+		'd2': 14,
+	}
+
+	DEOBFUSCATE_ROUTINE_NAME = 'MacroStringDeobfuscate'
+
+	def __init__(self, obfuscateChar = None, obfuscateNumber = None):
+		self.obfuscateChar = obfuscateChar
+		self.obfuscateNum = obfuscateNumber
+
+		if not obfuscateChar:
+			self.obfuscateChar = BitShuffleStringObfuscator.obfuscateCharWrapper
+
+		if not obfuscateNumber:
+			self.obfuscateNum = BitShuffleStringObfuscator.obfuscateNumWrapper
+
+	@staticmethod
+	def obfuscateCharWrapper(x):
+		return '"{}"'.format(x)
+
+	@staticmethod
+	def obfuscateNumWrapper(x):
+		return '{}'.format(x)
+
+	@staticmethod
+	def composeDword(a, b, c, d):
+		return (ord(a) << 24) | (ord(b) << 16) | (ord(c) << 8) | ord(d)
+
+	@staticmethod
+	def decomposeDword(num):
+		a = (num & 0xff000000) >> 24
+		b = (num & 0x00ff0000) >> 16
+		c = (num & 0x0000ff00) >> 8
+		d = (num & 0x000000ff)
+		return (a,b,c,d)
+
+	def obfuscateString(self, string):
+		chars = list(string)
+		obfuscated = ''
+
+		for i in range(len(chars) / 4 + 1):
+			fr = i * 4
+			to = fr + 4
+			if fr > len(chars) or to > len(chars): break
+			dword0 = chars[fr:to][:]
+			dword0.reverse()
+			dword = BitShuffleStringObfuscator.composeDword(*dword0)
+			obfuscatedDword = self.uintObfuscate(dword)
+			obfuscated += struct.pack('<I', obfuscatedDword)
+
+		return BitShuffleStringObfuscator.DEOBFUSCATE_ROUTINE_NAME + \
+			'("%s")' % base64.b64encode(obfuscated)
+
+	def deobfuscateString(self, string):
+		raw = list(base64.b64decode(string))
+		out = ''
+
+		for i in range(len(raw) / 4 + 1):
+			fr = i * 4
+			to = fr + 4
+			if fr > len(raw) or to > len(raw): break
+			dword0 = raw[fr:to][:]
+			dword0.reverse()
+			dword = BitShuffleStringObfuscator.composeDword(*dword0)
+			rawDword = self.uintRestore(dword)
+			out += struct.pack('<I', rawDword)
+
+		return out
+
+	def uintObfuscate(self, num):
+		mask1 = self.OBFUSCATION_PARAMS['mask1']
+		mask2 = self.OBFUSCATION_PARAMS['mask2']
+		d1 = self.OBFUSCATION_PARAMS['d1']
+		d2 = self.OBFUSCATION_PARAMS['d2']
+
+		t = ctypes.c_uint((num ^ (num >> d1)) & mask1).value
+		u = ctypes.c_uint((num ^ t ^ (t << d1))).value
+		t = ctypes.c_uint((u ^ (u >> d2)) & mask2).value
+		out = ctypes.c_uint(u ^ t ^ (t << d2)).value
+		return out
+
+	def uintRestore(self, num):
+		mask1 = self.OBFUSCATION_PARAMS['mask1']
+		mask2 = self.OBFUSCATION_PARAMS['mask2']
+		d1 = self.OBFUSCATION_PARAMS['d1']
+		d2 = self.OBFUSCATION_PARAMS['d2']
+
+		t = ctypes.c_uint((num ^ (num >> d2)) & mask2).value
+		u = ctypes.c_uint(num ^ t ^ (t << d2)).value
+		t = ctypes.c_uint((u ^ (u >> d1)) & mask1).value
+		out = ctypes.c_uint(u ^ t ^ (t << d1)).value
+		return out
+
+	def getDeobfuscatorCode(self):
+		return '''
+Public Function shr(ByVal Value As Long, ByVal Shift As Byte) As Long
+	shrLong = Value
+	If Shift > 0 Then
+		If Value > 0 Then
+			shrLong = Int(shrLong / (2 ^ Shift))
+		Else
+			If Shift > 31 Then
+				shrLong = 0
+			Else
+				shrLong = shrLong And &H7FFFFFFF
+
+				shrLong = Int(shrLong / (2 ^ Shift))
+
+				shrLong = shrLong Or 2 ^ (31 - Shift)
+			End If
+		End If
+	End If
+	shr = shrLong
+End Function
+
+Public Function shl(ByVal Value As Long, ByVal Shift As Byte) As Long
+	shlLong = Value
+	If Shift > 0 Then
+		Dim i As Byte
+		Dim m As Long
+		For i = 1 To Shift
+			' save 30th bit
+			m = shlLong And &H40000000
+			' clear 30th and 31st bits
+			shlLong = (shlLong And &H3FFFFFFF) * 2
+			If m <> 0 Then
+				' set 31st bit
+				shlLong = shlLong Or &H80000000
+			End If
+		Next i
+	End If
+	shl = shlLong
+End Function
+
+Public Function DeobfuscateDword(ByVal num As Long) As Long
+    Const mask1 As Long = %(mask1)d
+    Const mask2 As Long = %(mask2)d
+    Const d1 = 7
+    Const d2 = 14
+    Dim t As Long, u, out As Long
+    
+    ' Based on bits shuffling scheme devised by D. Knuth:
+    '   (method described in D.Knuth's vol.4a chapter 7.1.3)
+    t = (num Xor shr(num, d2)) And mask2
+    u = num Xor t Xor shl(t, d2)
+    t = (u Xor shr(u, d1)) And mask1
+    out = (u Xor t Xor shl(t, d1))
+    DeobfuscateDword = out
+    
+End Function
+
+Public Function %(deobfuscateFunctionName)sHelper(ByRef inputString() As Byte) As String
+    Dim i, fr, dword, raw As Long
+    Dim a As String, b As String, c As String, d As String
+    Dim deobf As String
+    Dim adword() As String
+    Dim a2, b2 As String
+
+    deobf = ""
+
+    For i = 0 To (UBound(inputString) / 4 + 1)
+        fr = i * 4
+        If fr > UBound(inputString) Then
+            Exit For
+        End If
+
+        dword = 0
+        dword = dword Or shl(inputString(fr + 3), 24)
+        dword = dword Or shl(inputString(fr + 2), 16)
+        dword = dword Or shl(inputString(fr + 1), 8)
+        dword = dword Or inputString(fr + 0)
+        
+        raw = DeobfuscateDword(dword)
+        
+        a = Chr(shr((raw And &HFF000000), 24))
+        b = Chr(shr((raw And &HFF0000), 16))
+        c = Chr(shr((raw And 65280), 8))
+        d = Chr(shr((raw And 255), 0))
+        deobf = deobf + d + c + b + a
+    Next i
+
+    %(deobfuscateFunctionName)sHelper = deobf
+End Function
+
+Public Function %(deobfuscateFunctionName)s(inputString As String) As String
+
+    Dim varByte1() As Byte, arrayByte2() As Byte, arrayByte3(255) As Byte
+    Dim arrayLong4(63) As Long, arrayLong5(63) As Long
+    Dim arrayLong6(63) As Long, bigNumber As Long
+    Dim padding As Integer, iter As Long, index As Long, varLong3 As Long
+    Dim deobf As String
+
+    inputString = Replace(inputString, vbCr, vbNullString)
+    inputString = Replace(inputString, vbLf, vbNullString)
+
+    varLong3 = Len(inputString) Mod 4
+    
+    ' Check padding
+    If InStrRev(inputString, "==") Then
+        padding = 2
+    ElseIf InStrRev(inputString, "" + "=") Then
+        padding = 1
+    End If
+
+    ' Generate index arrays
+    For varLong3 = 0 To 255
+        Select Case varLong3
+            Case 65 To 90
+                arrayByte3(varLong3) = varLong3 - 65
+            Case 97 To 122
+                arrayByte3(varLong3) = varLong3 - 71
+            Case 48 To 57
+                arrayByte3(varLong3) = varLong3 + 4
+            Case 43
+                arrayByte3(varLong3) = 62
+            Case 47
+                arrayByte3(varLong3) = 63
+        End Select
+    Next varLong3
+
+    ' Generate index translation arrays
+    For varLong3 = 0 To 63
+        arrayLong4(varLong3) = varLong3 * 64
+        arrayLong5(varLong3) = varLong3 * 4096
+        arrayLong6(varLong3) = varLong3 * 262144
+    Next varLong3
+
+    arrayByte2 = StrConv(inputString, vbFromUnicode)
+    ReDim varByte1((((UBound(arrayByte2) + 1) \ 4) * 3) - 1)
+
+    ' Convert big nums to quartets of raw chars
+    For iter = 0 To UBound(arrayByte2) Step 4
+        bigNumber = arrayLong6(arrayByte3(arrayByte2(iter))) + arrayLong5(arrayByte3(arrayByte2(iter + 1))) + arrayLong4(arrayByte3(arrayByte2(iter + 2))) + arrayByte3(arrayByte2(iter + 3))
+        varLong3 = bigNumber And 16711680
+        varByte1(index) = varLong3 \ 65536
+        varLong3 = bigNumber And 65280
+        varByte1(index + 1) = varLong3 \ 256
+        varByte1(index + 2) = bigNumber And 255
+        index = index + 3
+    Next iter
+
+    deobf = StrConv(varByte1, vbUnicode)
+    If padding Then deobf = Left$(deobf, Len(deobf) - padding)
+    %(deobfuscateFunctionName)s = %(deobfuscateFunctionName)sHelper(StrConv(deobf, vbFromUnicode))
+    
+End Function
+''' % {'mask1': self.OBFUSCATION_PARAMS['mask1'], 'mask2': self.OBFUSCATION_PARAMS['mask2'], 'deobfuscateFunctionName' : BitShuffleStringObfuscator.DEOBFUSCATE_ROUTINE_NAME}
+
+
+class ScriptObfuscator:
 
 	RESERVED_NAMES = (
 		"AutoExec",
@@ -99,10 +359,18 @@ class ScriptObfuscator():
 	GLOBALS_REGEX = r"\s*(?:(?:Public|Private|Protected)\s*(?:Dim|Set|Const)?\s+(\w+)\s*As)|(?:(?:Private|Protected|Public)\s+Declare\s+PtrSafe?\s*Function\s+(\w+)\s+)"
 
 
-	def __init__(self, normalize_only, reserved_words, garbage_perc, min_var_length):
+	def __init__(self, normalize_only = False, reserved_words = [], garbage_perc = 12.0, min_var_length = 5):
 		self.input = ''
 		self.output = ''
+		self.appendBitShuffleDeobfuscator = False
 		self.function_boundaries = []
+
+		bitShuffleObfuscator = BitShuffleBitShuffleStringObfuscator(ScriptObfuscator.obfuscateChar, ScriptObfuscator.obfuscateNumber)
+		self.BitShuffleStringObfuscators = [
+			self.obfuscateStringBySubstitute, 
+			bitShuffleObfuscator
+		]
+
 		self.normalize_only = normalize_only
 		self.garbage_perc = garbage_perc
 		self.min_var_length = min_var_length
@@ -121,7 +389,7 @@ class ScriptObfuscator():
 		self.removeComments()
 
 		# Step 2: Remove empty lines
-		self.output = '\n'.join(filter(lambda x: not re.match(r'^\s*$', x), self.output.split('\n')))
+		self.output = self.removeEmptyLines(self.output)
 
 		# Step 3: Merge long string lines and split them to concatenate.
 		self.mergeAndConcatLongLines()
@@ -139,10 +407,17 @@ class ScriptObfuscator():
 		self.insertGarbage()
 
 		# Step 8: Remove indents and multi-spaces.
-		if not DEBUG:
-			self.output = re.sub(r"\t| {2,}", "", self.output, flags=re.I)
+		self.output = self.removeIndents(self.output)
 
 		return self.output
+
+	def removeEmptyLines(self, txt):
+		return '\n'.join(filter(lambda x: not re.match(r'^\s*$', x), txt.split('\n')))
+
+	def removeIndents(self, txt):
+		if DEBUG:
+			return txt
+		return re.sub(r"\t| {2,}", "", txt, flags=re.I)
 
 	def removeComments(self):
 		lines = self.output.split('\n')
@@ -346,7 +621,8 @@ class ScriptObfuscator():
 			self.output = re.sub(r"\b" + varToReplace + r"\b", varName, self.output, flags=re.I | re.M)
 
 
-	def obfuscateNumber(self, num):
+	@staticmethod
+	def obfuscateNumber(num):
 		rnd1 = random.randint(0, 3333)
 		num_coders = (
 			lambda rnd1, num: '%d' % num,
@@ -359,12 +635,13 @@ class ScriptObfuscator():
 
 		return random.choice(num_coders)(rnd1, num)
 
-	def obfuscateChar(self, char):
+	@staticmethod
+	def obfuscateChar(char):
 		char_coders = (
 			lambda x: '"{}"'.format(x),
 			lambda x: 'Chr(&H%x)' % ord(x),
 			lambda x: 'Chr(%d)' % ord(x),
-			lambda x: 'Chr(%s)' % self.obfuscateNumber(ord(x)),
+			lambda x: 'Chr(%s)' % ScriptObfuscator.obfuscateNumber(ord(x)),
 			lambda x: 'Chr(Int("&H%x"))' % ord(x),
 			lambda x: 'Chr(Int("%d"))' % ord(x),
 		)
@@ -372,6 +649,9 @@ class ScriptObfuscator():
 		return out
 
 	def obfuscateString(self, string):
+		return self.obfuscateStringBySubstitute(string)
+
+	def obfuscateStringBySubstitute(self, string):
 		if len(string) == 0: return ""
 		new_string = ''
 		delim = '&'
@@ -404,6 +684,8 @@ class ScriptObfuscator():
 
 	def obfuscateStrings(self):
 		replaces = set()
+		appendDeobfuscatorFunction = False
+
 		for m in re.finditer(ScriptObfuscator.STRINGS_REGEX, self.output, flags=re.I|re.M):
 			orig_string = m.group(1)
 			string = orig_string[1:-1]
@@ -412,7 +694,6 @@ class ScriptObfuscator():
 			line_start = opening + self.output[opening:m.span()[0]].rfind('\n') + 1
 			line_stop = m.span()[1] + self.output[m.span()[1]:].find('\n') + 1
 			line = self.output[line_start:line_stop]
-
 
 			if 'declare' in line.lower() \
 				and 'ptrsafe' in line.lower() \
@@ -432,13 +713,29 @@ class ScriptObfuscator():
 				continue
 
 			info("String to obfuscate (context: {{%s}}): {{%s}}" % (m.group(0).strip(), string))
-			new_string = self.obfuscateString(string)
+			
+			# Select string obfuscator randomly
+			stringObfuscator = random.choice(self.BitShuffleStringObfuscators)
+
+			if self.appendBitShuffleDeobfuscator == False:
+				if stringObfuscator == self.BitShuffleStringObfuscator:
+					self.appendBitShuffleDeobfuscator = True
+					appendDeobfuscatorFunction = True
+
+			new_string = stringObfuscator(string)
+
 			info("OBFUSCATED:\n\t%s\n\t{{ %s }}\n\t=====>\n\t{{ %s }}\n\t%s\n" % ('^' * 60, string, new_string, '^' * 60))
 
 			replaces.add((orig_string, new_string))
 
 		for (orig, new) in replaces:
 			self.output = self.output.replace(orig, new)
+
+		if appendDeobfuscatorFunction:
+			deobfuscatorFunction = BitShuffleStringObfuscator.getDeobfuscatorCode()
+			deobfuscatorFunction = self.removeIndents(deobfuscatorFunction)
+			deobfuscatorFunction = self.removeEmptyLines(deobfuscatorFunction)
+			self.output += deobfuscatorFunction
 
 	def obfuscateArrays(self):
 		for m in re.finditer(r"\bArray\s*\(([^\)]+?)\)", self.output, flags=re.I|re.M):
@@ -457,7 +754,7 @@ class ScriptObfuscator():
 					nums = array.split(',')
 					for num in nums:
 						num = num.strip()
-						new_array.append(self.obfuscateNumber(int(num)))
+						new_array.append(ScriptObfuscator.obfuscateNumber(int(num)))
 
 					obfuscated = 'Array(' + ','.join(new_array) + ')'
 					info("\tObfuscated array: Array(%s, ..., %s)" % (','.join(new_array)[:40], ','.join(new_array)[-40:]))
@@ -654,7 +951,6 @@ def main(argv):
 			ok('Obfuscated code has been written to: "%s"\n' % config['output'])
 	else:
 		return False
-
 
 if __name__ == '__main__':
 	main(sys.argv)
