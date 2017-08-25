@@ -107,7 +107,7 @@ class BitShuffleStringObfuscator:
 		d = (num & 0x000000ff)
 		return (a,b,c,d)
 
-	def obfuscateString(self, string):
+	def obfuscateString(self, string, addDeobfName = True):
 		chars = list(string)
 		obfuscated = ''
 
@@ -121,8 +121,11 @@ class BitShuffleStringObfuscator:
 			obfuscatedDword = self.uintObfuscate(dword)
 			obfuscated += struct.pack('<I', obfuscatedDword)
 
-		return BitShuffleStringObfuscator.DEOBFUSCATE_ROUTINE_NAME + \
-			'("%s")' % base64.b64encode(obfuscated)
+		if addDeobfName:
+			return BitShuffleStringObfuscator.DEOBFUSCATE_ROUTINE_NAME + \
+				'("%s")' % base64.b64encode(obfuscated)
+		else:
+			return base64.b64encode(obfuscated)
 
 	def deobfuscateString(self, string):
 		raw = list(base64.b64decode(string))
@@ -164,9 +167,12 @@ class BitShuffleStringObfuscator:
 		out = ctypes.c_uint(u ^ t ^ (t << d1)).value
 		return out
 
+	def getDeobfuscatorFuncName(self):
+		return self.DEOBFUSCATE_ROUTINE_NAME
+
 	def getDeobfuscatorCode(self):
 		return '''
-Public Function shr(ByVal Value As Long, ByVal Shift As Byte) As Long
+Public Function shrLong(ByVal Value As Long, ByVal Shift As Byte) As Long
 	shrLong = Value
 	If Shift > 0 Then
 		If Value > 0 Then
@@ -183,10 +189,9 @@ Public Function shr(ByVal Value As Long, ByVal Shift As Byte) As Long
 			End If
 		End If
 	End If
-	shr = shrLong
 End Function
 
-Public Function shl(ByVal Value As Long, ByVal Shift As Byte) As Long
+Public Function shlLong(ByVal Value As Long, ByVal Shift As Byte) As Long
 	shlLong = Value
 	If Shift > 0 Then
 		Dim i As Byte
@@ -202,7 +207,6 @@ Public Function shl(ByVal Value As Long, ByVal Shift As Byte) As Long
 			End If
 		Next i
 	End If
-	shl = shlLong
 End Function
 
 Public Function DeobfuscateDword(ByVal num As Long) As Long
@@ -214,10 +218,10 @@ Public Function DeobfuscateDword(ByVal num As Long) As Long
     
     ' Based on bits shuffling scheme devised by D. Knuth:
     '   (method described in D.Knuth's vol.4a chapter 7.1.3)
-    t = (num Xor shr(num, d2)) And mask2
-    u = num Xor t Xor shl(t, d2)
-    t = (u Xor shr(u, d1)) And mask1
-    out = (u Xor t Xor shl(t, d1))
+    t = (num Xor shrLong(num, d2)) And mask2
+    u = num Xor t Xor shlLong(t, d2)
+    t = (u Xor shrLong(u, d1)) And mask1
+    out = (u Xor t Xor shlLong(t, d1))
     DeobfuscateDword = out
     
 End Function
@@ -238,17 +242,17 @@ Public Function %(deobfuscateFunctionName)sHelper(ByRef inputString() As Byte) A
         End If
 
         dword = 0
-        dword = dword Or shl(inputString(fr + 3), 24)
-        dword = dword Or shl(inputString(fr + 2), 16)
-        dword = dword Or shl(inputString(fr + 1), 8)
+        dword = dword Or shlLong(inputString(fr + 3), 24)
+        dword = dword Or shlLong(inputString(fr + 2), 16)
+        dword = dword Or shlLong(inputString(fr + 1), 8)
         dword = dword Or inputString(fr + 0)
         
         raw = DeobfuscateDword(dword)
         
-        a = Chr(shr((raw And &HFF000000), 24))
-        b = Chr(shr((raw And &HFF0000), 16))
-        c = Chr(shr((raw And 65280), 8))
-        d = Chr(shr((raw And 255), 0))
+        a = Chr(shrLong((raw And &HFF000000), 24))
+        b = Chr(shrLong((raw And 16711680), 16))
+        c = Chr(shrLong((raw And 65280), 8))
+        d = Chr(shrLong((raw And 255), 0))
         deobf = deobf + d + c + b + a
     Next i
 
@@ -345,10 +349,10 @@ class ScriptObfuscator:
 	FUNCTION_REGEX = r"(?:Public|Private|Protected|Friend)?\s*(?:Sub|Function)\s+(\w+)\s*\(.*\)"
 
 	# var = "value" _\n& "value"
-	LONG_LINES_REGEX = r"^\s*(?:(?:(\w+)\s*=)|&)\s*\"([^\"]+)\"(?:\s+_)?[^\"]*$"
+	LONG_LINES_REGEX = r"^\s*(?:(?:(\w+)\s*=(?:\s*\1\s*\+)?)|&)\s*\"([^\"]+)\"(?:\s+_)?"
 
-	# Dim var ; Dim Var As Type ; Set Var = [...] ; Const Var = [...]
-	VARIABLES_REGEX = r"(?:(?:\s*(\w+)\s*=)|(?:Dim|Set|Const)\s+(\w+)\s*(?:As|=)?)|(?:^(\w+)\s+As\s+)"
+	# Dim var ; Dim Var As Type ; Set Var = [...]
+	VARIABLES_REGEX = r"^\s*(?:(?:\s*(\w+)\s*=(?!\"))|(?:Dim|Set)\s+(\w+)\s*(?:As|=)?)|(?:^(\w+)\s+As\s+)"
 
 	# Dim Var1, var2, va3 As Type
 	VARIABLE_DECLARATIONS_REGEX = r"Dim\s+(?:(?:\s*,\s*)?(\w+)(?:\s*,\s*)?)+"
@@ -362,9 +366,10 @@ class ScriptObfuscator:
 	def __init__(self, normalize_only = False, reserved_words = [], garbage_perc = 12.0, min_var_length = 5):
 		self.input = ''
 		self.output = ''
-		self.function_boundaries = []
 
 		self.bitShuffleObfuscator = BitShuffleStringObfuscator(ScriptObfuscator.obfuscateChar, ScriptObfuscator.obfuscateNumber)
+		self.function_boundaries = []
+		self.deobfuscatorAddedOnce = False
 
 		self.normalize_only = normalize_only
 		self.garbage_perc = garbage_perc
@@ -380,41 +385,41 @@ class ScriptObfuscator:
 			self.mergeAndConcatLongLines()
 			return self.output
 
-		# Step 0: Add deobfuscator
-		self.addDeobfuscator()
-
-		# Step 1: Remove comments
-		self.removeComments()
-
-		# Step 2: Remove empty lines
+		# Remove empty lines
 		self.output = self.removeEmptyLines(self.output)
 
-		# Step 3: Merge long string lines and split them to concatenate.
-		self.mergeAndConcatLongLines()
+		# Merge long string lines and split them to concatenate.
+		self.output = self.mergeAndConcatLongLines(self.output)
 
-		# Step 4: Rename used variables
-		self.randomizeVariablesAndFunctions()
-
-		# Step 5: Explode string constants
+		# Explode string constants
 		self.obfuscateStrings()
 
-		# Step 6: Obfuscate arrays
+		# Remove comments
+		self.removeComments()
+
+		# Rename used variables
+		self.randomizeVariablesAndFunctions()
+
+		# Obfuscate arrays
 		self.obfuscateArrays()
 
-		# Step 7: Insert garbage
+		# Insert garbage
 		self.insertGarbage()
 
-		# Step 8: Remove indents and multi-spaces.
+		# Remove indents and multi-spaces.
 		self.output = self.removeIndents(self.output)
+		self.output = self.removeEmptyLines(self.output)
 
 		return self.output
 
 	def addDeobfuscator(self):
-		deobfuscatorFunction = self.bitShuffleObfuscator.getDeobfuscatorCode()
-		deobfuscatorFunction = self.removeIndents(deobfuscatorFunction)
-		deobfuscatorFunction = self.removeEmptyLines(deobfuscatorFunction)
-		info("Appending bit shuffle string deobfuscation routines.")
-		self.output += deobfuscatorFunction
+		if not self.deobfuscatorAddedOnce:
+			deobfuscatorFunction = self.bitShuffleObfuscator.getDeobfuscatorCode()
+			#deobfuscatorFunction = self.removeIndents(deobfuscatorFunction)
+			deobfuscatorFunction = self.removeEmptyLines(deobfuscatorFunction)
+			info("Appending bit shuffle string deobfuscation routines.")
+			self.output += '\n%s' % deobfuscatorFunction
+			self.deobfuscatorAddedOnce = True
 
 	def removeEmptyLines(self, txt):
 		return '\n'.join(filter(lambda x: not re.match(r'^\s*$', x), txt.split('\n')))
@@ -422,7 +427,18 @@ class ScriptObfuscator:
 	def removeIndents(self, txt):
 		if DEBUG:
 			return txt
-		return re.sub(r"\t| {2,}", "", txt, flags=re.I)
+		txt = re.sub(r"\t| {2,}", "", txt, flags=re.I)
+		lines = txt.split('\n')
+		newLines = []
+		# Have to be this way instead of finditer due to regex wrongly matching line breaks
+		for i in range(len(lines)):
+			line = lines[i]
+			outLine = line
+			for m in re.finditer(r"\s*(\+|\-|\/|\*|\=|\\|\,|\>|\<|\<\>|\^)\s*", line, flags=re.I):
+				outLine = outLine.replace(m.group(0), m.group(1))
+			newLines.append(outLine)
+		txt = '\n'.join(newLines)
+		return txt
 
 	def removeComments(self):
 		lines = self.output.split('\n')
@@ -431,15 +447,17 @@ class ScriptObfuscator:
 			m = re.search(r"('.*)", lines[i], flags=re.I)
 			if not m: 
 				continue
+			dbg("\tChecking if comment (%s) is inside of a string: (%s)" % (m.group(1), lines[i]))
 			n = re.search(r"(\"[^\"']*('[^\"]*)\")", lines[i], flags=re.I)
 			if not n:
+				dbg("\tNope, it's not.")
 				lines[i] = line.replace(m.group(1), '')
 				info("Found comment: (%s)" % m.group(1))
 			else:
-				if m.group(1) not in n.group(1):
+				dbg("\tYes it is. (group: (%s))" % n.group(1))
+				if m.group(1) not in n.group(1) and m.group(1) not in lines[i]:
 					info("Found comment: (%s)" % m.group(1))
 					lines[i] = line.replace(m.group(1), '')
-
 
 		self.output = '\n'.join(lines)
 
@@ -487,42 +505,46 @@ class ScriptObfuscator:
 				return func
 		return None
 
-	def mergeAndConcatLongLines(self):
-		SPLIT = 70
+	def findLongLines(self, txt, pos0, lineStart0 = 0, lineStop0 = 0):
 		rex = ScriptObfuscator.LONG_LINES_REGEX
-		pos = 0
-		replaces = []
-
-		dbg("\n####################### MERGE START #######################", bcolors.FAIL + bcolors.BOLD)
-
-		while pos < len(self.output):
+		pos = pos0
+		varName = None
+		longLine = None
+		origLine = None
+		lineStart = lineStart0
+		lineStop = lineStop0
+  
+		dbg("Searching for long lines.", bcolors.OKBLUE)
+		while pos < len(txt):
 			dbg("Searching for long lines regex: POS = %d" % pos, bcolors.OKGREEN)
-			m = re.search(rex, self.output[pos:], flags=re.I|re.M)
-			if not m: break
+			m = re.search(rex, txt[pos:], flags=re.I|re.M)
+			if not m: 
+				break
+
 			varName = m.group(1)
 			longLine = m.group(2)
 
-			endOfLine = pos + self.output[pos:].find('\n')
-			suffix = self.output[pos:endOfLine + 1]
+			endOfLine = pos + txt[pos:].find('\n')
+			suffix = txt[pos:endOfLine + 1]
 			
 			lineStart = pos + m.span()[0]
 			pos += m.span()[1]
 			pos += len(suffix)		
-			lineStop = pos
+			lineStop = pos - 1
 
 			dbg("This is candidate for a long line (pos=%d, lineStart=%d, lineStop=%d, span: %s):\n{{ %s }}\n" % (pos, lineStart, lineStop, str(m.span()), longLine))
 			assert lineStart < lineStop
 
 			while True:
-				if pos >= len(self.output): break
-				endOfLine = pos + self.output[pos:].find('\n')
-				line = self.output[pos:endOfLine]
+				if pos >= len(txt): break
+				endOfLine = pos + txt[pos:].find('\n')
+				line = txt[pos:endOfLine]
 				dbg("\tDoes this line contains strings? (pos=%d, end=%d):\n\t{{ %s }}\n" % (pos,endOfLine,line))
 				fault = False
 				if endOfLine < pos:
 					fault = True
 					endOfLine, pos = pos, endOfLine
-					line = self.output[pos:]
+					line = txt[pos:]
 
 				dbg("\tWe will find out by matching this line: pos=%d, endOfLine=%d,\n{{ %s }}" % (pos, endOfLine, line))
 				n = re.match(rex, line, flags=re.I|re.M)
@@ -532,14 +554,30 @@ class ScriptObfuscator:
 					pos += endOfLine - pos + 1
 
 				if not n: 
-					dbg("\tOoops, not matchin seemingly.")
+					dbg("\tOoops, not matching seemingly.")
 					break
 
+				dbg("\tYes. It matches smoothly: (%s)" % n.group(2))
 				longLine += n.group(2)
 				
 			assert lineStart < lineStop
 			lineStop = pos
-			dbg("AFTER Searching for acompanying lines, pos = %d" % pos)
+
+		origLine = txt[lineStart:lineStop]
+		dbg("Found long line (lineStart=%d, lineStop=%d, pos=%d):\n{{ %s }}\n" % (lineStart, lineStop, pos, origLine))
+		return (varName, origLine, longLine, pos, lineStart, lineStop)
+
+	def mergeAndConcatLongLines(self, txt):
+		SPLIT = 70
+		replaces = []
+		pos = 0
+		lineStart = 0
+		lineStop = 0
+		
+		while True:
+			(varName, origLine, longLine, pos, lineStart, lineStop) = self.findLongLines(txt, pos, lineStart, lineStop)
+			if not origLine or not longLine: break
+			dbg("AFTER Searching for acompanying lines. Returned: varName = (%s), pos=%d, lineStart=%d, lineStop = %d\n\torigLine = {{ %s }}\n\tlongLine = {{ %s }}" % (varName, pos, lineStart, lineStop, origLine, longLine))
 			newLine = ''
 			for s in range(len(longLine) / SPLIT + 1):
 				fr = s * SPLIT
@@ -549,24 +587,23 @@ class ScriptObfuscator:
 				else:
 					newLine += '%s = %s + "%s"\n' % (varName, varName, longLine[fr:to])
 
-			if len(newLine) < SPLIT:
-				dbg("TOO SHORT TO BE REPLACED (%s)..." % newLine)
+			dbg("Full long line joined altogether:\n{{ %s }}\n" % longLine)
+			if len(longLine) < SPLIT:
+				dbg("Too short to be replaced (%s)..." % longLine)
 				continue
+			else:
+				dbg("This line will get merged:\n{{ %s }}\n" % newLine)
+				replaces.append((origLine, newLine, longLine))
+				if pos >= len(txt): break
 
-			dbg("This line will get merged:\n{{ %s }}\n" % newLine)
-			
-			origLine = self.output[lineStart:lineStop]
-			dbg("This line will be REMOVED (lineStart=%d, lineStop=%d, pos=%d):\n{{ %s }}\n" % (lineStart, lineStop, pos, origLine))
-			
-			replaces.append((origLine, newLine))
-			if pos >= len(self.output): break
-
-		for (orig, new) in replaces:
+		for (orig, new, longLine) in replaces:
 			if DEBUG:
 				dbg("Merging long line:\n\t{{ %s }}\n\t======>\n\t{{ %s }}\n\n" % (orig, new))
 			else:
 				info("Merging long string line (var: %s, len: %d): '%s...%s'" % (varName, len(longLine), longLine[:40], longLine[-40:]))
-			self.output = self.output.replace(orig, new)
+			txt = txt.replace(orig, new)
+
+		return txt
 
 
 	def randomizeVariablesAndFunctions(self):
@@ -577,6 +614,7 @@ class ScriptObfuscator:
 			if len(varToReplace) < self.min_var_length: return
 			if varToReplace in self.reserved_words: return
 			info(name + " name obfuscated (context: \"%s\"): '%s' => '%s'" % (m.group(0).strip(), varToReplace, varName))
+			
 			self.output = re.sub(r"(?:\b" + varToReplace + r"\b)|(?:" + varToReplace + r"\s*=\s*)", varName, self.output, flags=re.I | re.M)
 
 		# Variables
@@ -613,7 +651,9 @@ class ScriptObfuscator:
 			for repl in replaces:
 				info("Function argument obfuscated (%s): (%s) => (%s)" % (funcName, repl[0], repl[1]))
 				out = re.sub(r"\b" + repl[0] + r"\b", repl[1], funcCode, flags=re.I|re.M)
-				self.output = pre_func + out + post_func
+
+				# BUG: In some corner case it totally breaks the syntax
+				#self.output = pre_func + out + post_func
 
 		# Functions
 		for m in re.finditer(ScriptObfuscator.FUNCTION_REGEX, self.output, flags = re.I|re.M):
@@ -643,15 +683,14 @@ class ScriptObfuscator:
 	@staticmethod
 	def obfuscateChar(char):
 		char_coders = (
-			lambda x: '"{}"'.format(x),
-			lambda x: 'Chr(&H%x)' % ord(x),
-			lambda x: 'Chr(%d)' % ord(x),
-			lambda x: 'Chr(%s)' % ScriptObfuscator.obfuscateNumber(ord(x)),
-			lambda x: 'Chr(Int("&H%x"))' % ord(x),
-			lambda x: 'Chr(Int("%d"))' % ord(x),
+			lambda x: '"{}"'.format(x),	# 0
+			lambda x: 'Chr(&H%x)' % ord(x),	# 1
+			lambda x: 'Chr(%d)' % ord(x), # 2
+			lambda x: 'Chr(%s)' % ScriptObfuscator.obfuscateNumber(ord(x)), # 3
+			lambda x: 'Chr(Int("&H%x"))' % ord(x), # 4
+			lambda x: 'Chr(Int("%d"))' % ord(x), # 5
 		)
-		out = random.choice(char_coders)(char)
-		return out
+		return random.choice(char_coders)(char)
 
 	def obfuscateString(self, string):
 		return self.obfuscateStringBySubstitute(string)
@@ -687,9 +726,8 @@ class ScriptObfuscator:
 		if new_string.endswith(' _'): new_string = new_string[:-2]
 		return new_string
 
-	def obfuscateStrings(self):
+	def obfuscateStrings(self, useBitShuffler = True):
 		replaces = set()
-		appendDeobfuscatorFunction = False
 
 		for m in re.finditer(ScriptObfuscator.STRINGS_REGEX, self.output, flags=re.I|re.M):
 			orig_string = m.group(1)
@@ -717,10 +755,21 @@ class ScriptObfuscator:
 					replaces.add((line, garbage + line + garbage2))
 				continue
 
-			info("String to obfuscate (context: {{%s}}): {{%s}}" % (m.group(0).strip(), string))
+			exceptionallyAvoidBitShuffler = False
+
+			if 'const' in line.lower():
+				# Const are not to be anyhow obfuscated.
+				continue
+
+			info("String to obfuscate (context: {{%s}}, len: %d): {{%s}}" % (m.group(0).strip(), len(orig_string), string))
 			
-			new_string = self.bitShuffleObfuscator.obfuscateString(orig_string)
-			#new_string = self.obfuscateStringBySubstitute(new_string)
+			if exceptionallyAvoidBitShuffler or not useBitShuffler or len(string) <= 5:
+				new_string = self.obfuscateStringBySubstitute(string)
+			else:
+				new_string = '"%s"' % self.bitShuffleObfuscator.obfuscateString(string, False)
+				if len(new_string) <= 40:
+					new_string = self.obfuscateStringBySubstitute(new_string[1:-1])
+				new_string = '%s(%s)' % (self.bitShuffleObfuscator.getDeobfuscatorFuncName(), new_string)
 
 			info("OBFUSCATED:\n\t%s\n\t{{ %s }}\n\t=====>\n\t{{ %s }}\n\t%s\n" % ('^' * 60, string, new_string, '^' * 60))
 
@@ -728,6 +777,8 @@ class ScriptObfuscator:
 
 		for (orig, new) in replaces:
 			self.output = self.output.replace(orig, new)
+
+		self.addDeobfuscator()
 
 	def obfuscateArrays(self):
 		for m in re.finditer(r"\bArray\s*\(([^\)]+?)\)", self.output, flags=re.I|re.M):
@@ -800,10 +851,10 @@ class ScriptObfuscator:
 				varContents = self.obfuscateString(randomString(random.randint(10,30)))
 				garbage = ''
 				if comment:
-					garbage = '\'Dim %(varName)s\n\'Set %(varName)s = %(varContents)s' % \
+					garbage = '\'Dim %(varName)s As String\n\'%(varName)s = %(varContents)s' % \
 					{'varName' : varName, 'varContents' : varContents}
 				else:
-					garbage = 'Dim %(varName)s\nSet %(varName)s = %(varContents)s' % \
+					garbage = 'Dim %(varName)s As String\n%(varName)s = %(varContents)s' % \
 					{'varName' : varName, 'varContents' : varContents}
 
 				# TODO:
