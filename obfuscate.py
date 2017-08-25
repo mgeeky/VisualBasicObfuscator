@@ -357,7 +357,7 @@ class ScriptObfuscator:
 	# Dim Var1, var2, va3 As Type
 	VARIABLE_DECLARATIONS_REGEX = r"Dim\s+(?:(?:\s*,\s*)?(\w+)(?:\s*,\s*)?)+"
 
-	FUNCTION_PARAMETERS_REGEX = r"(?:(?:Optional\s*)?(?:ByRef|ByVal\s*)?(\w+)\s+As\s+\w+\s*,?\s*)"
+	FUNCTION_PARAMETERS_REGEX = r"(?:(?:Optional\s+)?\s*(?:ByRef|ByVal\s+)?(\w+)\s+As\s+\w+\s*,?\s*)"
 
 	# Public Dim Var As Type ; Public Declare PtrSafe [...]
 	GLOBALS_REGEX = r"\s*(?:(?:Public|Private|Protected)\s*(?:Dim|Set|Const)?\s+(\w+)\s*As)|(?:(?:Private|Protected|Public)\s+Declare\s+PtrSafe?\s*Function\s+(\w+)\s+)"
@@ -655,6 +655,9 @@ class ScriptObfuscator:
 				# BUG: In some corner case it totally breaks the syntax
 				#self.output = pre_func + out + post_func
 
+				# Temporary bug fix:
+				self.output = self.output.replace(funcCode, out)
+
 		# Functions
 		for m in re.finditer(ScriptObfuscator.FUNCTION_REGEX, self.output, flags = re.I|re.M):
 			varName = randomString(random.randint(4,12))
@@ -832,7 +835,7 @@ class ScriptObfuscator:
 		for i in range(len(new_lines)):
 			if j >= len(lines): break
 
-			inside_func = self.isInsideFunc(pos)
+			inside_func = self.isInsideFunc(pos, offset)
 
 			if i in garbage_lines:
 				if i > 0 and (\
