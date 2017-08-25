@@ -365,11 +365,7 @@ class ScriptObfuscator:
 		self.appendBitShuffleDeobfuscator = False
 		self.function_boundaries = []
 
-		bitShuffleObfuscator = BitShuffleBitShuffleStringObfuscator(ScriptObfuscator.obfuscateChar, ScriptObfuscator.obfuscateNumber)
-		self.BitShuffleStringObfuscators = [
-			self.obfuscateStringBySubstitute, 
-			bitShuffleObfuscator
-		]
+		self.bitShuffleObfuscator = BitShuffleStringObfuscator(ScriptObfuscator.obfuscateChar, ScriptObfuscator.obfuscateNumber)
 
 		self.normalize_only = normalize_only
 		self.garbage_perc = garbage_perc
@@ -714,15 +710,8 @@ class ScriptObfuscator:
 
 			info("String to obfuscate (context: {{%s}}): {{%s}}" % (m.group(0).strip(), string))
 			
-			# Select string obfuscator randomly
-			stringObfuscator = random.choice(self.BitShuffleStringObfuscators)
-
-			if self.appendBitShuffleDeobfuscator == False:
-				if stringObfuscator == self.BitShuffleStringObfuscator:
-					self.appendBitShuffleDeobfuscator = True
-					appendDeobfuscatorFunction = True
-
-			new_string = stringObfuscator(string)
+			new_string = self.bitShuffleObfuscator.obfuscateString(orig_string)
+			#new_string = self.obfuscateStringBySubstitute(new_string)
 
 			info("OBFUSCATED:\n\t%s\n\t{{ %s }}\n\t=====>\n\t{{ %s }}\n\t%s\n" % ('^' * 60, string, new_string, '^' * 60))
 
@@ -731,11 +720,13 @@ class ScriptObfuscator:
 		for (orig, new) in replaces:
 			self.output = self.output.replace(orig, new)
 
-		if appendDeobfuscatorFunction:
-			deobfuscatorFunction = BitShuffleStringObfuscator.getDeobfuscatorCode()
+		if not self.appendBitShuffleDeobfuscator:
+			deobfuscatorFunction = self.bitShuffleObfuscator.getDeobfuscatorCode()
 			deobfuscatorFunction = self.removeIndents(deobfuscatorFunction)
 			deobfuscatorFunction = self.removeEmptyLines(deobfuscatorFunction)
+			info("Appending bit shuffle string deobfuscation routines.")
 			self.output += deobfuscatorFunction
+			self.appendBitShuffleDeobfuscator = True
 
 	def obfuscateArrays(self):
 		for m in re.finditer(r"\bArray\s*\(([^\)]+?)\)", self.output, flags=re.I|re.M):
