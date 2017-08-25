@@ -4,7 +4,8 @@ Visual Basic Code universal Obfuscator intended to be used during penetration te
 ### FEATURES
 
 - Able to obfuscate arrays of numbers and characters
-- Obfuscating strings
+- Obfuscating strings via Bit Shuffling and bas64 encoding (_as described in D.Knuth's vol.4a chapter 7.1.3_)
+    (this method produces smaller in size results (approx. 66% smaller resulting scripts)
 - Merging long concatenated lines into variables appendings to avoid maximum number of continuing lines (24)
 - Junk insertion, smart enough to avoid breaking syntax outside of routines
 - Sensitive to quote escapes within strings, detecting consecutive lines concatenation
