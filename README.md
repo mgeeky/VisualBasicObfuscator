@@ -6,7 +6,7 @@ Visual Basic Code universal Obfuscator intended to be used during penetration te
 ### FEATURES
 
 - Able to obfuscate arrays of numbers and characters
-- Obfuscating strings via Bit Shuffling and bas64 encoding (_as described in D.Knuth's vol.4a chapter 7.1.3_). This method produces smaller in size results (approx. 66% smaller resulting scripts)
+- Obfuscating strings via Bit Shuffling and base64 encoding (_as described in D.Knuth's vol.4a chapter 7.1.3_). This method produces smaller in size results (approx. 66% smaller resulting scripts)
 - Merging long concatenated lines into variables appendings to avoid maximum number of continuing lines (24)
 - Junk insertion, smart enough to avoid breaking syntax outside of routines
 - Sensitive to quote escapes within strings, detecting consecutive lines concatenation
@@ -118,6 +118,14 @@ End Sub
 
 **Obfuscated form**:
 
+Invocation - we have to specify that the macro is named `test` and therefore this Sub name shall not be mangled:
+
+```
+bash $ ./obfuscate.py -r test -v demo.vbs
+```
+
+Output (mind that _Constants_ contents cannot be anyhow obfuscated, as they have to be known at compile time):
+
 ```
 Const MY_CONSTANTS="Some super const"
 Dim H5AyJRiT As String
@@ -174,3 +182,10 @@ MsgBox (onOrpZJSZL(Chr(105)&"O"&Chr(Int("80"))&Chr(2870-2789)&Chr(&H58)&Chr(2709
 - Add `Eval` based code obfuscation routines
 - Offer the user functionality of storing encryption/decryption key in document's metadata.
 
+
+---
+
+### KNOWN BUGS:
+
+- Inserting junk that is not a comment doesn't work properly (something about function boundaries detection)
+- There is a bug with function parameters mangling that introduces various syntax errors and breaks
