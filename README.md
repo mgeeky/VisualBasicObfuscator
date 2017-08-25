@@ -52,10 +52,6 @@ optional arguments:
 
 ---
 
-## Disclaimer
-
-There is much work to be done in this tool, so at the moment I'm not describing it thoroughly until it get's satisfiable level of functionality. 
-
 
 ## Obfuscation example
 
