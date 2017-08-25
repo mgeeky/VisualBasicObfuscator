@@ -62,12 +62,12 @@ There is much work to be done in this tool, so at the moment I'm not describing 
 **Original form** 
 
 ```
-
 Const MY_CONSTANTS = "Some super const"
-Variable As String
 Dim AnotherVariable As String
 
-Sub MyTestSub (ByVal arg1 As String)
+Sub MyTestSub(ByVal arg1 As String)
+    ' The below real-world used query contains nested quotes/apostrophes
+    ' That could confuse `removeComments` routine
     Query = "SELECT * FROM __InstanceModificationEvent WITHIN 60 " _
     & "WHERE TargetInstance ISA 'Win32_PerfFormattedData_PerfOS_System' " _
     & "AND TargetInstance.SystemUpTime >= 200 AND " _
@@ -76,23 +76,41 @@ Sub MyTestSub (ByVal arg1 As String)
     Dim arr As Variant
     arr = Array(1, 2, 3, 4, 5, 6)   ' This is an inline comment
 
+    Dim var1, var2
+    var1 = "Testing Short string"
+    var2 = "short"
+
     '
     ' This is a comment
     '
     Dim longString
-    longString = "this is some very long string concatenated."
-    longString = longString + "this is some very long string concatenated."
-    longString = longString + "this is some very long string concatenated."
-    longString = longString + "this is some very long string concatenated."
-    longString = longString + "this is some very long string concatenated."
-    longString = longString + "this is some very long string concatenated."
+    longString = "1. this is some very long string concatenated."
+    longString = longString + "2. this is some very long string concatenated."
+    longString = longString + "3. this is some very long string concatenated."
+    longString = longString + "4. this is some very long string concatenated."
+
+    longString = longString + "5. this is some very long string concatenated." _
+    & "6. this is some very long string concatenated." _
+    & "7. this is some very long string concatenated." _
+    & "8. this is some very long string concatenated." _
+    & "9. this is some very long string concatenated."
 
     Dim somecondition As Boolean
     somecondition = False
-    If somecondition <> True Then
-        End Sub
+    If somecondition <> False Then
+        Exit Sub
     End If
 
+    MsgBox ("Test1(Constant): " & MY_CONSTANTS)
+    MsgBox ("Test2(Query): " & Query)
+    MsgBox ("Test3(var1 + var2): " & var1 & var2)
+    MsgBox ("Test4(longString): " & longString)
+    MsgBox ("Test5(Array's contents): " & Join(arr, ","))
+
+End Sub
+
+Sub test()
+    MyTestSub (0)
 End Sub
 ```
 
@@ -101,35 +119,48 @@ End Sub
 **Obfuscated form**:
 
 ```
-'Dim aVfvyu
-'Set aVfvyu = Chr(Int("117"))&Chr(88)&Chr(Int("109"))&Chr(Int("&H62"))&"f"&Chr(-2940+2988)&"U"&"X"&Chr(-340+415)&Chr(Int("77"))&Chr(&H52)&Chr(Int("&H59"))&Chr(143330/1303)&Chr(&H65)&"y"
-'Dim ISTfUwgvSFrf
-'Set ISTfUwgvSFrf = "b"&Chr(Int("117"))&Chr(Int("67"))&"m"&"9"&Chr(2968-2892)&Chr(&H52)&Chr(&H56)&Chr(66)&Chr(&H4a)&"P"&Chr(Int("56"))&Chr(Int("&H42"))&Chr(115)&Chr(6602-6513)&Chr(88)&Chr(Int("&H75"))
-Const pyMy8dwtX = Chr(Int("83"))&"o"&"m"&Chr(Int("101"))&Chr(38560/1205)&Chr(Int("&H73"))&Chr(Int("&H75"))&Chr(112)&"e"&Chr(114)&Chr(&H20)&Chr(99)&Chr(111)&Chr(&H6e)&Chr(Int("115"))&Chr(Int("&H74"))
-HFaqG1lD6KKx As String
-Dim Ano
-K9FRiZbopz4n = Chr(&H53)&Chr(Int("&H45"))&Chr(&H4c)&Chr(69)&Chr(Int("67"))&Chr(Int("84"))&Chr(32)&Chr(&H2a)&Chr(32)&Chr(2509-2439)&Chr(82)&"O"&Chr(-100+177)&Chr(Int("32"))&"_"&Chr(-2119+2214)&Chr(Int("&H49"))&Chr(Int("110"))&Chr(Int("&H73"))&Chr(Int("&H74"))&Chr(&H61)&"n"&Chr(99)&"e"&Chr(Int("77"))&Chr(111)&Chr(Int("100"))&Chr(Int("&H69"))&"f"&Chr(Int("&H69"))&Chr(Int("99"))&Chr(Int("97"))&"t"&Chr(1680-1575)&Chr(Int("&H6f"))&Chr(&H6e)&Chr(Int("69"))&Chr(118)&Chr(Int("101"))&"n"&"t"&Chr(&H20)&"W"&Chr(73)&"T"&Chr(72)&Chr(Int("&H49"))&Chr(Int("78"))&Chr(Int("&H20"))&Chr(3113-3059)&Chr(48)&Chr(32)&Chr(-2805+2892)&Chr(Int("&H48"))&Chr(Int("69"))&"R"&Chr(Int("69"))&Chr(&H20)&Chr(&H54)&Chr(174891/1803)&Chr(114)&Chr(&H67)&"e"&Chr(Int("116"))&Chr(&H49)&Chr(Int("&H6e"))&Chr(Int("&H73"))&Chr(Int("&H74"))&Chr(8479-8382) _
-& Chr(Int("&H6e"))
-K9FRiZbopz4n = K9FRiZbopz4n + Chr(192753/1947)&Chr(101)&Chr(Int("32"))&Chr(73)&Chr(83)&Chr(65)&Chr(86016/2688)&"
-& "t"
-K9FRiZbopz4n = K9FRiZbopz4n + Chr(Int("&H65"))&Chr(&H6d)&Chr(Int("&H55"))&Chr(112)&"T"&Chr(Int("105"))&Chr(&H6d)&Chr(Int("101"))&Chr(&H20)&Chr(Int("&H3e"))&Chr(1833-1772)&" "&Chr(Int("&H32"))&Chr(&H30)&"0"&Chr(Int("&H20"))&Chr(Int("65"))&Chr(&H4e)&Chr(68)&Chr(Int("&H20"))&Chr(Int("84"))&"a"&"r"&Chr(Int("103"))&Chr(&H65)&Chr(Int("&H74"))&Chr(&H49)&Chr(Int("&H6e"))&Chr(9433-9318)&Chr(&H74)&"a"&Chr(110)&Chr(99)&Chr(&H65)&Chr(Int("&H2e"))&Chr(Int("83"))&Chr(&H79)&Chr(Int("115"))&Chr(116)&"e"&"m"&Chr(Int("&H55"))&Chr(&H70)&Chr(84)&Chr(105)&Chr(Int("109"))&Chr(&H65)&Chr(32)&Chr(7233-7173)&Chr(32)&Chr(51)&Chr(Int("50"))&"0"
+Const MY_CONSTANTS="Some super const"
+Dim H5AyJRiT As String
+Sub LdzqEiHkpovt(ByVal arg1 As String)
+K8fqa=onOrpZJSZL("Aq0oV8IwZBFohAVdSO6+TJjg8124pPFV0K9zUbqn0FD4q9xWwLr1VWiukEpQooxWoBBRCQ==") _
+& onOrpZJSZL("EuqkUgCucEii6dFXmODzXbik8VU4hYBYaI3RSep3F0yIoVRf2qdRXaC8cF2g4sBVMLVhXSrsnVOC9+9aoK/cFw==") _
+& onOrpZJSZL("EKhhEYinVF5gsvxV4rD0V6ptPFGgvXNeoPMiXbCp8hGyU1YDoBQQQg==") _
+& onOrpZJSZL("iKdUXmCy/FXisPRXqm08UaC9c16g8yJdsKnyEahC1go=")
 Dim arr As Variant
-arr = Array(8812-8811,1048/524,30/10,2601-2597,-1938+1943,6)
-Dim JNmFJc8DgvM2
-JNmFJc8DgvM2 = Chr(Int("116"))&Chr(Int("104"))&Chr(Int("105"))&"s"&Chr(32)&Chr(105)&Chr(Int("&H73"))&" "&Chr(6213-6098)&Chr(Int("111"))&Chr(&H6d)&Chr(2371-2270)&Chr(4910-4878)&Chr(118)&"e"&Chr(114)&Chr(121)&Chr(-32+64)&"l"&Chr(Int("&H6f"))&Chr(Int("&H6e"))&Chr(&H67)&Chr(&H20)&Chr(&H73)&Chr(Int("&H74"))&Chr(114)&Chr(Int("105"))&Chr(Int("&H6e"))&Chr(&H67)&" "&Chr(504-405)&Chr(8358-8247)&Chr(Int("110"))&Chr(&H63)&Chr(Int("97"))&Chr(116)&Chr(&H65)&Chr(110)&Chr(97)&Chr(Int("&H74"))&Chr(Int("&H65"))&Chr(Int("100"))&"."
-'Dim bsCHuctI
-'Set bsCHuctI = "s"&"U"&"t"&Chr(67)&Chr(&H71)&Chr(Int("66"))&"m"&Chr(Int("112"))&Chr(&H41)&Chr(Int("73"))&Chr(&H55)&Chr(Int("&H6b"))&"d"&"Y"&Chr(Int("&H4b"))&Chr(155344/2128)&Chr(&H59)&Chr(Int("&H61"))&Chr(Int("119"))&Chr(219300/2924)&Chr(65)&Chr(63291/1241)&Chr(Int("&H7a"))&Chr(Int("&H39"))&Chr(140679/1617)&Chr(Int("&H6e"))&Chr(&H6d)&Chr(99)&Chr(71)
-JNmFJc8DgvM2 = JNmFJc8DgvM2 + Chr(Int("116"))&Chr(Int("104"))&Chr(Int("105"))&"s"&Chr(32)&Chr(105)&Chr(Int("&H73"))&" "&Chr(6213-6098)&Chr(Int("111"))&Chr(&H6d)&Chr(2371-2270)&Chr(4910-4878)&Chr(118)&"e"&Chr(114)&Chr(121)&Chr(-32+64)&"l"&Chr(Int("&H6f"))&Chr(Int("&H6e"))&Chr(&H67)&Chr(&H20)&Chr(&H73)&Chr(Int("&H74"))&Chr(114)&Chr(Int("105"))&Chr(Int("&H6e"))&Chr(&H67)&" "&Chr(504-405)&Chr(8358-8247)&Chr(Int("110"))&Chr(&H63)&Chr(Int("97"))&Chr(116)&Chr(&H65)&Chr(110)&Chr(97)&Chr(Int("&H74"))&Chr(Int("&H65"))&Chr(Int("100"))&"."
-JNmFJc8DgvM2 = JNmFJc8DgvM2 + Chr(Int("116"))&Chr(Int("104"))&Chr(Int("105"))&"s"&Chr(32)&Chr(105)&Chr(Int("&H73"))&" "&Chr(6213-6098)&Chr(Int("111"))&Chr(&H6d)&Chr(2371-2270)&Chr(4910-4878)&Chr(118)&"e"&Chr(114)&Chr(121)&Chr(-32+64)&"l"&Chr(Int("&H6f"))&Chr(Int("&H6e"))&Chr(&H67)&Chr(&H20)&Chr(&H73)&Chr(Int("&H74"))&Chr(114)&Chr(Int("105"))&Chr(Int("&H6e"))&Chr(&H67)&" "&Chr(504-405)&Chr(8358-8247)&Chr(Int("110"))&Chr(&H63)&Chr(Int("97"))&Chr(116)&Chr(&H65)&Chr(110)&Chr(97)&Chr(Int("&H74"))&Chr(Int("&H65"))&Chr(Int("100"))&"."
-JNmFJc8DgvM2 = JNmFJc8DgvM2 + Chr(Int("116"))&Chr(Int("104"))&Chr(Int("105"))&"s"&Chr(32)&Chr(105)&Chr(Int("&H73"))&" "&Chr(6213-6098)&Chr(Int("111"))&Chr(&H6d)&Chr(2371-2270)&Chr(4910-4878)&Chr(118)&"e"&Chr(114)&Chr(121)&Chr(-32+64)&"l"&Chr(Int("&H6f"))&Chr(Int("&H6e"))&Chr(&H67)&Chr(&H20)&Chr(&H73)&Chr(Int("&H74"))&Chr(114)&Chr(Int("105"))&Chr(Int("&H6e"))&Chr(&H67)&" "&Chr(504-405)&Chr(8358-8247)&Chr(Int("110"))&Chr(&H63)&Chr(Int("97"))&Chr(116)&Chr(&H65)&Chr(110)&Chr(97)&Chr(Int("&H74"))&Chr(Int("&H65"))&Chr(Int("100"))&"."
-JNmFJc8DgvM2 = JNmFJc8DgvM2 + Chr(Int("116"))&Chr(Int("104"))&Chr(Int("105"))&"s"&Chr(32)&Chr(105)&Chr(Int("&H73"))&" "&Chr(6213-6098)&Chr(Int("111"))&Chr(&H6d)&Chr(2371-2270)&Chr(4910-4878)&Chr(118)&"e"&Chr(114)&Chr(121)&Chr(-32+64)&"l"&Chr(Int("&H6f"))&Chr(Int("&H6e"))&Chr(&H67)&Chr(&H20)&Chr(&H73)&Chr(Int("&H74"))&Chr(114)&Chr(Int("105"))&Chr(Int("&H6e"))&Chr(&H67)&" "&Chr(504-405)&Chr(8358-8247)&Chr(Int("110"))&Chr(&H63)&Chr(Int("97"))&Chr(116)&Chr(&H65)&Chr(110)&Chr(97)&Chr(Int("&H74"))&Chr(Int("&H65"))&Chr(Int("100"))&"."
-JNmFJc8DgvM2 = JNmFJc8DgvM2 + Chr(Int("116"))&Chr(Int("104"))&Chr(Int("105"))&"s"&Chr(32)&Chr(105)&Chr(Int("&H73"))&" "&Chr(6213-6098)&Chr(Int("111"))&Chr(&H6d)&Chr(2371-2270)&Chr(4910-4878)&Chr(118)&"e"&Chr(114)&Chr(121)&Chr(-32+64)&"l"&Chr(Int("&H6f"))&Chr(Int("&H6e"))&Chr(&H67)&Chr(&H20)&Chr(&H73)&Chr(Int("&H74"))&Chr(114)&Chr(Int("105"))&Chr(Int("&H6e"))&Chr(&H67)&" "&Chr(504-405)&Chr(8358-8247)&Chr(Int("110"))&Chr(&H63)&Chr(Int("97"))&Chr(116)&Chr(&H65)&Chr(110)&Chr(97)&Chr(Int("&H74"))&Chr(Int("&H65"))&Chr(Int("100"))&"."
-Dim GkSxDgf As Boolean
-GkSxDgf = False
-If GkSxDgf <> True Then
-End Sub
+arr=Array(3256/3256,293-291,-1964+1967,-2979+2983,1678-1673,342-336)
+Dim var1,var2
+var1=onOrpZJSZL(Chr(Int("&H69"))&Chr(&H4f)&Chr(Int("&H50"))&Chr(Int("&H51"))&"X"&Chr(55)&Chr(Int("&H69"))&Chr(Int("111"))&Chr(Int("56"))&Chr(Int("120"))&Chr(&H47)&Chr(&H61)&Chr(&H36)&Chr(-209+289)&Chr(Int("120"))&Chr(Int("&H53"))&Chr(113)&Chr(Int("&H4f"))&Chr(76)&"Q"&Chr(Int("84"))&Chr(114)&"q"&Chr(&H74)&Chr(88)&Chr(70)&Chr(-2196+2285)&Chr(Int("&H3d")))
+var2=Chr(Int("115"))&Chr(Int("104"))&Chr(111)&"r"&Chr(1900-1784)
+Dim oAQ96qYI As String
+oAQ96qYI=Chr(&H4c)&Chr(56)&Chr(Int("&H79"))&Chr(112)&Chr(111)&Chr(76)&Chr(Int("48"))&Chr(Int("&H50"))&Chr(78645/749)&Chr(&H45)&Chr(&H49)&Chr(110)&Chr(Int("78"))&Chr(Int("97"))&Chr(2431-2328)&Chr(&H52)&Chr(-1842+1955)&Chr(3538-3458)&"7"&Chr(Int("104"))&Chr(121)
+Dim ChtxGWGe As String
+ChtxGWGe=Chr(1513-1429)&Chr(80)&Chr(Int("69"))&Chr(121)&Chr(Int("122"))&Chr(&H41)&Chr(Int("&H73"))&Chr(Int("&H31"))&Chr(Int("&H76"))&"l"&"k"&Chr(Int("&H33"))&Chr(Int("67"))&Chr(&H42)&Chr(51)&Chr(&H78)&Chr(&H37)&Chr(&H71)&Chr(878-766)&Chr(2660-2571)&Chr(Int("71"))&Chr(Int("&H58"))&Chr(77)&Chr(113)&Chr(78276/1186)
+Dim E1X9VVBEe
+E1X9VVBEe=onOrpZJSZL("sEBxR7ih0higdXdQsqvyEernUFv4iNxVquLwTLqtXFboid1Uoq1wXKKvUlw=")
+E1X9VVBEe=E1X9VVBEe+onOrpZJSZL("skBRR7ih0higdXdQsqvyEernUFv4iNxVquLwTLqtXFboid1Uoq1wXKKvUlw=")
+E1X9VVBEe=E1X9VVBEe+onOrpZJSZL("skBxR7ih0higdXdQsqvyEernUFv4iNxVquLwTLqtXFboid1Uoq1wXKKvUlw=")
+E1X9VVBEe=E1X9VVBEe+onOrpZJSZL("sEJRR7ih0higdXdQsqvyEernUFv4iNxVquLwTLqtXFboid1Uoq1wXKKvUlw=")
+E1X9VVBEe=E1X9VVBEe+onOrpZJSZL("sEJxR7ih0higdXdQsqvyEernUFv4iNxVquLwTLqtXFboid1Uoq1wXKKvUlw=") _
+& onOrpZJSZL("skJRR7ih0higdXdQsqvyEernUFv4iNxVquLwTLqtXFboid1Uoq1wXKKvUlw=") _
+& onOrpZJSZL("skJxR7ih0higdXdQsqvyEernUFv4iNxVquLwTLqtXFboid1Uoq1wXKKvUlw=") _
+& onOrpZJSZL("sEBTR7ih0higdXdQsqvyEernUFv4iNxVquLwTLqtXFboid1Uoq1wXKKvUlw=") _
+& onOrpZJSZL("sEBzR7ih0higdXdQsqvyEernUFv4iNxVquLwTLqtXFboid1Uoq1wXKKvUlw=")
+Dim EKyef8cVxSrr As Boolean
+Dim v9yzH As String
+v9yzH="t"&Chr(Int("&H62"))&Chr(Int("57"))&"r"&Chr(&H57)&Chr(Int("&H61"))&Chr(Int("&H4c"))&"W"&Chr(Int("&H6b"))&Chr(109)&"x"&Chr(108)&Chr(Int("50"))&Chr(115)&Chr(&H6e)&"P"&Chr(&H36)&Chr(80)&Chr(86)&Chr(Int("108"))&Chr(Int("&H74"))
+EKyef8cVxSrr=False
+If EKyef8cVxSrr<>False Then
+Exit Sub
 End If
-End Sub
+Dim P0HBOB As String
+P0HBOB=Chr(-1358+1446)&Chr(-3235+3316)&Chr(27010/365)&"7"&Chr(Int("&H6c"))&Chr(75)&"R"&Chr(6462-6396)&Chr(Int("&H57"))&Chr(86)&Chr(Int("106"))&Chr(99)&Chr(49)&Chr(&H56)&Chr(52496/772)&Chr(&H64)&"s"&Chr(Int("&H66"))&Chr(8944-8832)&Chr(Int("&H63"))&Chr(Int("104"))&Chr(72)&Chr(&H43)&Chr(Int("107"))&Chr(Int("&H4b"))&Chr(-1162+1278)&Chr(3073-2984)&"e"
+MsgBox ("Test1(Constant): " & MY_CONSTANTS)
+MsgBox (onOrpZJSZL(Chr(105)&Chr(79)&Chr(75840/948)&Chr(Int("&H51"))&Chr(Int("&H58"))&"z"&Chr(-344+420)&"E"&Chr(Int("48"))&"E"&Chr(55)&"g"&Chr(2905-2789)&Chr(-294+412)&Chr(&H6b)&Chr(Int("89"))) & K8fqa)
+MsgBox (onOrpZJSZL(Chr(&H69)&Chr(79)&Chr(80)&Chr(&H51)&Chr(895-807)&Chr(6451-6396)&Chr(&H71)&"M"&Chr(Int("&H63"))&Chr(&H45)&Chr(114)&Chr(-1738+1843)&Chr(&H4e)&Chr(Int("&H56"))&"Q"&Chr(&H43)&Chr(283938/2558)&Chr(Int("78"))&"D"&Chr(86)&Chr(85)&"b"&Chr(Int("&H6f"))&Chr(Int("66"))&"W"&"A"&Chr(111)&Chr(61)) & var1 & var2)
+MsgBox (onOrpZJSZL(Chr(105)&"O"&Chr(Int("80"))&Chr(2870-2789)&Chr(&H58)&Chr(2709-2662)&Chr(Int("&H43"))&Chr(79)&Chr(Int("88"))&Chr(Int("69"))&Chr(196601/2209)&Chr(Int("&H71"))&Chr(&H34)&Chr(Int("&H39"))&"N"&Chr(3900/39)&Chr(Int("&H75"))&Chr(113)&Chr(-1542+1591)&"c"&Chr(Int("86"))&Chr(189417/1839)&Chr(&H3d)&"=") & E1X9VVBEe)
+
+' Cut for brevity. One can see the rest of this output in 'demo-obfuscated.vbs'
+' [...]
 ```
 
 ---
