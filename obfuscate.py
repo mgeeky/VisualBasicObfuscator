@@ -7,9 +7,7 @@ import string
 import random
 import argparse
 
-# TODO: Switch this
 DEBUG = False 
-
 MAX_LINE_LENGTH = 1024 - 100
 
 config = {
@@ -20,25 +18,47 @@ config = {
 	'garbage_perc' : 12.0,
 	'min_var_length' : 5,
 	'custom_reserved_words': [],
-	'normalize_only': False
+	'normalize_only': False,
+	'colors': True
 }
 
-def out(x):
-	if not config['quiet']:
-		sys.stderr.write(x + '\n')
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
-def log(x):
+def out(x, col = ''):
+	if not config['quiet']:
+		if col:
+			sys.stderr.write(col + x + bcolors.ENDC + '\n')
+		else:
+			sys.stderr.write(x + '\n')
+
+def log(x, col = ''):
 	if config['verbose']:
 		out(x)
 
-def err(x):
-	out('[!] ' + x)
+def err(x, col = ''):
+	col2 = bcolors.BOLD + bcolors.FAIL if (config['colors'] and not col) else col
+	out(col2 + '[!] ' + x + bcolors.ENDC)
 
-def info(x):
-	log('[?] ' + x)
+def dbg(x, col = ''):
+	if DEBUG:
+		col2 = bcolors.HEADER if (config['colors'] and not col) else col
+		log(col2 + "[DBG] " + x + bcolors.ENDC)
 
-def ok(x):
-	log('[+] ' + x)
+def info(x, col = ''):
+	col2 = bcolors.OKBLUE if (config['colors'] and not col) else col
+	log(col2 + '[?] ' + x + bcolors.ENDC)
+
+def ok(x, col = ''):
+	col2 = bcolors.BOLD + bcolors.OKGREEN if (config['colors'] and not col) else col
+	out(col2 + '[+] ' + x + bcolors.ENDC)
 
 class ScriptObfuscator():
 
@@ -65,7 +85,7 @@ class ScriptObfuscator():
 	FUNCTION_REGEX = r"(?:Public|Private|Protected|Friend)?\s*(?:Sub|Function)\s+(\w+)\s*\(.*\)"
 
 	# var = "value" _\n& "value"
-	LONG_LINES_REGEX = r"\s*(?:(?:(\w+)\s*=)|&)\s*\"([^\"]+)\"\s*_?"
+	LONG_LINES_REGEX = r"^\s*(?:(?:(\w+)\s*=)|&)\s*\"([^\"]+)\"(?:\s+_)?[^\"]*$"
 
 	# Dim var ; Dim Var As Type ; Set Var = [...] ; Const Var = [...]
 	VARIABLES_REGEX = r"(?:(?:\s*(\w+)\s*=)|(?:Dim|Set|Const)\s+(\w+)\s*(?:As|=)?)|(?:^(\w+)\s+As\s+)"
@@ -92,31 +112,32 @@ class ScriptObfuscator():
 		self.input = inp
 		self.output = inp
 
-		# Normalization processes, not obfuscating at the moment.
-		# 	Step 1: Merge long string lines and split them to concatenate.
-		self.mergeAndConcatLongLines()
-
+		# Normalization processes, avoid obfuscating.
 		if self.normalize_only:
+			self.mergeAndConcatLongLines()
 			return self.output
 
-		# Step 2: Rename used variables
-		self.randomizeVariablesAndFunctions()
-
-		# Step 3: Explode string constants
-		self.obfuscateStrings()
-
-		# Step 4: Obfuscate arrays
-		self.obfuscateArrays()
-
-		# Step 5: Remove comments
+		# Step 1: Remove comments
 		self.removeComments()
 
-		# Step 6: Insert garbage
+		# Step 2: Remove empty lines
+		self.output = '\n'.join(filter(lambda x: not re.match(r'^\s*$', x), self.output.split('\n')))
+
+		# Step 3: Merge long string lines and split them to concatenate.
+		self.mergeAndConcatLongLines()
+
+		# Step 4: Rename used variables
+		self.randomizeVariablesAndFunctions()
+
+		# Step 5: Explode string constants
+		self.obfuscateStrings()
+
+		# Step 6: Obfuscate arrays
+		self.obfuscateArrays()
+
+		# Step 7: Insert garbage
 		self.insertGarbage()
 
-		# Step 7: Remove empty lines
-		self.output = '\n'.join(filter(lambda x: not re.match(r'^\s*$', x), self.output.split('\n')))
-		
 		# Step 8: Remove indents and multi-spaces.
 		if not DEBUG:
 			self.output = re.sub(r"\t| {2,}", "", self.output, flags=re.I)
@@ -192,44 +213,53 @@ class ScriptObfuscator():
 		pos = 0
 		replaces = []
 
+		dbg("\n####################### MERGE START #######################", bcolors.FAIL + bcolors.BOLD)
+
 		while pos < len(self.output):
+			dbg("Searching for long lines regex: POS = %d" % pos, bcolors.OKGREEN)
 			m = re.search(rex, self.output[pos:], flags=re.I|re.M)
 			if not m: break
 			varName = m.group(1)
 			longLine = m.group(2)
-			pos += m.span()[1]
 
 			endOfLine = pos + self.output[pos:].find('\n')
 			suffix = self.output[pos:endOfLine + 1]
 			
-			lineStart = m.span()[0]
+			lineStart = pos + m.span()[0]
+			pos += m.span()[1]
 			pos += len(suffix)		
 			lineStop = pos
+
+			dbg("This is candidate for a long line (pos=%d, lineStart=%d, lineStop=%d, span: %s):\n{{ %s }}\n" % (pos, lineStart, lineStop, str(m.span()), longLine))
+			assert lineStart < lineStop
 
 			while True:
 				if pos >= len(self.output): break
 				endOfLine = pos + self.output[pos:].find('\n')
 				line = self.output[pos:endOfLine]
+				dbg("\tDoes this line contains strings? (pos=%d, end=%d):\n\t{{ %s }}\n" % (pos,endOfLine,line))
 				fault = False
 				if endOfLine < pos:
 					fault = True
 					endOfLine, pos = pos, endOfLine
 					line = self.output[pos:]
 
+				dbg("\tWe will find out by matching this line: pos=%d, endOfLine=%d,\n{{ %s }}" % (pos, endOfLine, line))
 				n = re.match(rex, line, flags=re.I|re.M)
-				if not n: 
-					break
-
 				if fault:
 					pos += endOfLine + 1
 				else:
 					pos += endOfLine - pos + 1
 
+				if not n: 
+					dbg("\tOoops, not matchin seemingly.")
+					break
+
 				longLine += n.group(2)
 				
+			assert lineStart < lineStop
 			lineStop = pos
-			origLine = self.output[lineStart:lineStop]
-			info("Merging long string line (var: %s, len: %d): '%s...%s'" % (varName, len(longLine), longLine[:40], longLine[-40:]))
+			dbg("AFTER Searching for acompanying lines, pos = %d" % pos)
 			newLine = ''
 			for s in range(len(longLine) / SPLIT + 1):
 				fr = s * SPLIT
@@ -240,13 +270,22 @@ class ScriptObfuscator():
 					newLine += '%s = %s + "%s"\n' % (varName, varName, longLine[fr:to])
 
 			if len(newLine) < SPLIT:
+				dbg("TOO SHORT TO BE REPLACED (%s)..." % newLine)
 				continue
 
+			dbg("This line will get merged:\n{{ %s }}\n" % newLine)
+			
+			origLine = self.output[lineStart:lineStop]
+			dbg("This line will be REMOVED (lineStart=%d, lineStop=%d, pos=%d):\n{{ %s }}\n" % (lineStart, lineStop, pos, origLine))
+			
 			replaces.append((origLine, newLine))
 			if pos >= len(self.output): break
 
 		for (orig, new) in replaces:
-			info("REPLACING: (%s) => (%s)" % (orig, new))
+			if DEBUG:
+				dbg("Merging long line:\n\t{{ %s }}\n\t======>\n\t{{ %s }}\n\n" % (orig, new))
+			else:
+				info("Merging long string line (var: %s, len: %d): '%s...%s'" % (varName, len(longLine), longLine[:40], longLine[-40:]))
 			self.output = self.output.replace(orig, new)
 
 
@@ -518,6 +557,7 @@ def parse_options(argv):
 	group2.add_argument("-N", "--normalize", dest="normalize_only", help="Don't perform obfuscation, do only code normalization (like long strings transformation).", action='store_true')
 	group2.add_argument("-g", "--garbage", help="Percent of garbage to append to the obfuscated code. Default: 12%%.", default=config['garbage_perc'], type=float)
 	group2.add_argument("-G", "--no-garbage", dest="nogarbage", help="Don't append any garbage.", action='store_true')
+	group2.add_argument("-C", "--no-colors", dest="nocolors", help="Dont use colors.", action='store_true')
 	parser.add_argument("-m", "--min-var-len", dest='min_var_len', help="Minimum length of variable to include in name obfuscation. Too short value may break the original script. Default: 5.", default=config['min_var_length'], type=int)
 	parser.add_argument("-r", "--reserved", action='append', help='Reserved word/name that should not be obfuscated (in case some name has to be in original script cause it may break it otherwise). Repeat the option for more words.')
 	group.add_argument("-v", "--verbose", help="Verbose output.", action="store_true")
@@ -539,6 +579,9 @@ def parse_options(argv):
 
 	if args.output:
 		config['output'] = args.output
+
+	if args.nocolors:
+		config['colors'] = False
 
 	if args.normalize_only:
 		config['normalize_only'] = args.normalize_only
@@ -576,9 +619,9 @@ def main(argv):
 	Mariusz B. / mgeeky, '17
 ''')
 
-	ok('Input file:\t\t"%s"' % config['file'])
+	ok('Input file: "%s"' % config['file'])
 	if config['output']:
-		ok('Output file:\t"%s"' % config['output'])
+		ok('Output file: "%s"' % config['output'])
 	else:
 		ok('Output file:\tstdout.')
 
@@ -586,7 +629,7 @@ def main(argv):
 	with open(config['file'], 'r') as f:
 		contents = f.read()
 
-	out('\n[.] Input file length: %d' % len(contents))
+	ok('Input file length: %d' % len(contents))
 
 	obfuscator = ScriptObfuscator(
 		config['normalize_only'], \
@@ -596,15 +639,19 @@ def main(argv):
 	obfuscated = obfuscator.obfuscate(contents)
 
 	if obfuscated:
-		out('[.] Obfuscated file length: %d' % len(obfuscated))
+		ok('Obfuscated file length: %d' % len(obfuscated))
 		if not config['output']:
-			out('\n' + '-' * 80)
+			out('\n\n')
+			ok('-' * 80 )
+
 			print obfuscated
-			out('-' * 80)
+
+			ok('-' * 80)
+			out('\n')
 		else:
 			with open(config['output'], 'w') as f:
 				f.write(obfuscated)
-			out('[+] Obfuscated code has been written to: "%s"' % config['output'])
+			ok('Obfuscated code has been written to: "%s"\n' % config['output'])
 	else:
 		return False
 

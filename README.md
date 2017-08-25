@@ -1,10 +1,21 @@
 ## VisualBasicObfuscator
 Visual Basic Code universal Obfuscator intended to be used during penetration testing assignments.
 
+### FEATURES
+
+- Able to obfuscate arrays of numbers and characters
+- Obfuscating strings
+- Merging long concatenated lines into variables appendings to avoid maximum number of continuing lines (24)
+- Junk insertion, smart enough to avoid breaking syntax outside of routines
+- Sensitive to quote escapes within strings, detecting consecutive lines concatenation
+- Variables, Globals, Constants, function names, function parameters names randomization
+- Comments, indents and blank lines removal,
+
+
+
 ```
-$ ./obfuscate.py -h 
-usage: obfuscate.py [-h] [-o OUTPUT] [-N | -g GARBAGE | -G] [-m MIN_VAR_LEN]
-                    [-r RESERVED] [-v | -q]
+usage: obfuscate.py [-h] [-o OUTPUT] [-N | -g GARBAGE | -G | -C]
+                    [-m MIN_VAR_LEN] [-r RESERVED] [-v | -q]
                     input_file
 
 Attempts to obfuscate an input visual basic script in order to prevent curious
@@ -23,6 +34,7 @@ optional arguments:
                         Percent of garbage to append to the obfuscated code.
                         Default: 12%.
   -G, --no-garbage      Don't append any garbage.
+  -C, --no-colors       Dont use colors.
   -m MIN_VAR_LEN, --min-var-len MIN_VAR_LEN
                         Minimum length of variable to include in name
                         obfuscation. Too short value may break the original
