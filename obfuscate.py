@@ -362,7 +362,6 @@ class ScriptObfuscator:
 	def __init__(self, normalize_only = False, reserved_words = [], garbage_perc = 12.0, min_var_length = 5):
 		self.input = ''
 		self.output = ''
-		self.appendBitShuffleDeobfuscator = False
 		self.function_boundaries = []
 
 		self.bitShuffleObfuscator = BitShuffleStringObfuscator(ScriptObfuscator.obfuscateChar, ScriptObfuscator.obfuscateNumber)
@@ -380,6 +379,9 @@ class ScriptObfuscator:
 		if self.normalize_only:
 			self.mergeAndConcatLongLines()
 			return self.output
+
+		# Step 0: Add deobfuscator
+		self.addDeobfuscator()
 
 		# Step 1: Remove comments
 		self.removeComments()
@@ -406,6 +408,13 @@ class ScriptObfuscator:
 		self.output = self.removeIndents(self.output)
 
 		return self.output
+
+	def addDeobfuscator(self):
+		deobfuscatorFunction = self.bitShuffleObfuscator.getDeobfuscatorCode()
+		deobfuscatorFunction = self.removeIndents(deobfuscatorFunction)
+		deobfuscatorFunction = self.removeEmptyLines(deobfuscatorFunction)
+		info("Appending bit shuffle string deobfuscation routines.")
+		self.output += deobfuscatorFunction
 
 	def removeEmptyLines(self, txt):
 		return '\n'.join(filter(lambda x: not re.match(r'^\s*$', x), txt.split('\n')))
@@ -719,14 +728,6 @@ class ScriptObfuscator:
 
 		for (orig, new) in replaces:
 			self.output = self.output.replace(orig, new)
-
-		if not self.appendBitShuffleDeobfuscator:
-			deobfuscatorFunction = self.bitShuffleObfuscator.getDeobfuscatorCode()
-			deobfuscatorFunction = self.removeIndents(deobfuscatorFunction)
-			deobfuscatorFunction = self.removeEmptyLines(deobfuscatorFunction)
-			info("Appending bit shuffle string deobfuscation routines.")
-			self.output += deobfuscatorFunction
-			self.appendBitShuffleDeobfuscator = True
 
 	def obfuscateArrays(self):
 		for m in re.finditer(r"\bArray\s*\(([^\)]+?)\)", self.output, flags=re.I|re.M):
