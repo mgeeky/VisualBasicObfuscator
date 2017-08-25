@@ -184,4 +184,4 @@ MsgBox (onOrpZJSZL(Chr(105)&"O"&Chr(Int("80"))&Chr(2870-2789)&Chr(&H58)&Chr(2709
 ### KNOWN BUGS:
 
 - Inserting junk that is not a comment doesn't work properly (something about function boundaries detection)
-- There is a bug with function parameters mangling that introduces various syntax errors and breaks
+- -There is a bug with function parameters mangling that introduces various syntax errors and breaks-
