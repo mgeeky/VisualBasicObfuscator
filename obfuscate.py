@@ -382,7 +382,7 @@ class ScriptObfuscator:
 
 		# Normalization processes, avoid obfuscating.
 		if self.normalize_only:
-			self.mergeAndConcatLongLines()
+			self.output = self.mergeAndConcatLongLines(self.output)
 			return self.output
 
 		# Remove empty lines
