@@ -5,6 +5,7 @@ Visual Basic Code universal Obfuscator intended to be used during penetration te
 
 ### FEATURES
 
+- Able to extract HTML/HTA/<script> contents
 - Able to obfuscate arrays of numbers and characters
 - Obfuscating strings via Bit Shuffling and base64 encoding (_as described in D.Knuth's vol.4a chapter 7.1.3_). This method produces smaller in size results (approx. 66% smaller resulting scripts)
 - Merging long concatenated lines into variables appendings to avoid maximum number of continuing lines (24)
