@@ -11,6 +11,7 @@ import random
 import argparse
 
 DEBUG = False 
+SPLIT = 80		# split long lines at this column
 MAX_LINE_LENGTH = 1024 - 100
 
 config = {
@@ -352,7 +353,7 @@ class ScriptObfuscator:
 	LONG_LINES_REGEX = r"^\s*(?:(?:(\w+)\s*=(?:\s*\1\s*\+)?)|&)\s*\"([^\"]+)\"(?:\s+_)?"
 
 	# Dim var ; Dim Var As Type ; Set Var = [...]
-	VARIABLES_REGEX = r"^\s*(?:(?:\s*(\w+)\s*=(?!\"))|(?:Dim|Set)\s+(\w+)\s*(?:As|=)?)|(?:^(\w+)\s+As\s+)"
+	VARIABLES_REGEX = r"^\s*(?:(?:\s*(\w+)\s*=(?!\"))|(?:Dim|Set|Const)\s+(\w+)\s*(?:As|=)?)|(?:^(\w+)\s+As\s+)"
 
 	# Dim Var1, var2, va3 As Type
 	VARIABLE_DECLARATIONS_REGEX = r"Dim\s+(?:(?:\s*,\s*)?(\w+)(?:\s*,\s*)?)+"
@@ -404,7 +405,9 @@ class ScriptObfuscator:
 		self.obfuscateArrays()
 
 		# Insert garbage
-		self.insertGarbage()
+		# TODO: Garbage insertion is flawed at the moment, resulting in inserting
+		# 		junk lines that breaks line continuations (lines ending with '_').
+		#self.insertGarbage()
 
 		# Remove indents and multi-spaces.
 		self.output = self.removeIndents(self.output)
@@ -434,7 +437,8 @@ class ScriptObfuscator:
 		for i in range(len(lines)):
 			line = lines[i]
 			outLine = line
-			for m in re.finditer(r"\s*(\+|\-|\/|\*|\=|\\|\,|\>|\<|\<\>|\^)\s*", line, flags=re.I):
+			for m in re.finditer(r"\s*(\+|\-|\/|\*|\=|\\|\,|\>|\<|\<\>|\^)\s*(?!\_)", line, flags=re.I):
+				if '_' in line[m.span()[1]:]: continue
 				outLine = outLine.replace(m.group(0), m.group(1))
 			newLines.append(outLine)
 		txt = '\n'.join(newLines)
@@ -555,6 +559,10 @@ class ScriptObfuscator:
 
 				if not n: 
 					dbg("\tOoops, not matching seemingly.")
+					if len(longLine) > SPLIT:
+						origLine = txt[lineStart:lineStop]
+						dbg("Although this is helluva long line - %d bytes! Gotta break it up. (lineStart=%d, lineStop=%d, pos=%d):\n{{ %s }}\n" % (len(longLine), lineStart, lineStop, pos, longLine))
+						return (varName, origLine, longLine, pos, lineStart, lineStop)
 					break
 
 				dbg("\tYes. It matches smoothly: (%s)" % n.group(2))
@@ -568,7 +576,6 @@ class ScriptObfuscator:
 		return (varName, origLine, longLine, pos, lineStart, lineStop)
 
 	def mergeAndConcatLongLines(self, txt):
-		SPLIT = 70
 		replaces = []
 		pos = 0
 		lineStart = 0
@@ -615,7 +622,7 @@ class ScriptObfuscator:
 			if varToReplace in self.reserved_words: return
 			info(name + " name obfuscated (context: \"%s\"): '%s' => '%s'" % (m.group(0).strip(), varToReplace, varName))
 			
-			self.output = re.sub(r"(?:\b" + varToReplace + r"\b)|(?:" + varToReplace + r"\s*=\s*)", varName, self.output, flags=re.I | re.M)
+			self.output = re.sub(r"(?:\b" + varToReplace + r"\b)|(?:\b" + varToReplace + r"\s*=\s*)", varName, self.output, flags=re.I | re.M)
 
 		# Variables
 		for m in re.finditer(ScriptObfuscator.VARIABLES_REGEX, self.output, flags = re.I|re.M):
@@ -757,6 +764,7 @@ class ScriptObfuscator:
 
 					replaces.add((line, garbage + line + garbage2))
 				continue
+			elif line.lstrip().startswith("'"): continue
 
 			exceptionallyAvoidBitShuffler = False
 
@@ -871,6 +879,29 @@ class ScriptObfuscator:
 		self.output = '\n'.join(new_lines)
 
 
+def classifyFileAndExtractContents(contents):
+	# Simple decision tree
+	htmlOrHtaFile = (
+		'<html', '</html>', '<script', '</script>'
+	)
+
+	allMarkers = True
+	for a in htmlOrHtaFile:
+		if a not in contents.lower():
+			allMarkers = False
+			break
+
+	if allMarkers:
+		ok("File has been classified as HTML/HTA or containing <script> to be extracted.")
+		m = re.search(r"\<script[^\>]+>(.*)</script>", contents, flags=re.I|re.M|re.S)
+		if m:
+			return m.group(1)
+		else:
+			err("Although it was not possible to extract script contents. Proceeding with raw")
+			return contents
+
+	return contents
+
 def randomString(len):
 
 	rnd = ''.join(random.choice(
@@ -904,12 +935,18 @@ def parse_options(argv):
 	parser.add_argument("-m", "--min-var-len", dest='min_var_len', help="Minimum length of variable to include in name obfuscation. Too short value may break the original script. Default: 5.", default=config['min_var_length'], type=int)
 	parser.add_argument("-r", "--reserved", action='append', help='Reserved word/name that should not be obfuscated (in case some name has to be in original script cause it may break it otherwise). Repeat the option for more words.')
 	group.add_argument("-v", "--verbose", help="Verbose output.", action="store_true")
+	group.add_argument("-d", "--debug", help="Debug output.", action="store_true")
 	group.add_argument("-q", "--quiet", help="No unnecessary output.", action="store_true")
 
 	args = parser.parse_args()
 
 	if args.verbose:
 		config['verbose'] = True
+
+	if args.debug:
+		global DEBUG
+		config['verbose'] = True
+		DEBUG = True
 
 	if not args:
 		parser.print_help()
@@ -971,6 +1008,8 @@ def main(argv):
 	contents = ''
 	with open(config['file'], 'r') as f:
 		contents = f.read()
+
+	contents = classifyFileAndExtractContents(contents)
 
 	ok('Input file length: %d' % len(contents))
 
