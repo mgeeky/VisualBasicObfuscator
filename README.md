@@ -2,6 +2,17 @@
 Visual Basic Code universal Obfuscator intended to be used during penetration testing assignments.
 To be used mainly to avoid AV and mail filters detections as well as Blue Teams inspection tasks.
 
+Here is a sample **VirusTotal.com** scan against malicious Word document with embedded [RobustPentestMacro](https://github.com/mgeeky/RobustPentestMacro) geared up with _Empire_-generated powershell stager:
+
+No obfuscation | Obfuscated 
+[15 / 58](https://www.virustotal.com/#/file/d45af91e7a46cedc0aaa68a79eea48f19f47cdf2202e8347e61c178d987e2dcd/detection) | [9 / 58](https://www.virustotal.com/#/file/ea2e812c62543946f9f175b4183db2555d69673307bb046138b41e7fa9f63b91/detection)
+
+- In case of _Non-obfuscated_ sample, the AV software has flagged the file with certain malicious-macro statement.
+- As of obfuscated sample we've been left with _obfuscated_ flag.
+
+There is still a huge area of improvement in testing which obfuscation techniques trigger what patterns, and work towards reducing such detection rate.
+
+
 ---
 
 ### FEATURES
