@@ -10,6 +10,8 @@ import string
 import random
 import argparse
 
+VERSION='0.1'
+
 DEBUG = False
 SPLIT = 80		# split long lines at this column
 MAX_LINE_LENGTH = 1024 - 100
@@ -1077,7 +1079,8 @@ def main(argv):
 	out('''
 	Visual Basic script obfuscator for penetration testing usage.
 	Mariusz B. / mgeeky, '17
-''')
+        ver: %(versionNum)s
+''' % {'versionNum' : VERSION })
 
 	ok('Input file: "%s"' % config['file'])
 	if config['output']:
