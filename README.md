@@ -186,7 +186,7 @@ MsgBox (onOrpZJSZL(Chr(105)&"O"&Chr(Int("80"))&Chr(2870-2789)&Chr(&H58)&Chr(2709
 ### TODO:
 
 - Improve obfuscation routines
-- Add strings encoding/decoding routine based on some simple transformations
+~~- Add strings encoding/decoding routine based on some simple transformations~~
 - Add strings array based obfuscation
 - Add polymorphic code obfuscation with given key to put into document's metadata
 - Add `Eval` based code obfuscation routines
