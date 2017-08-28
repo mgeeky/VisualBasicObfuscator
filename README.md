@@ -1,5 +1,6 @@
 ## VisualBasicObfuscator
 Visual Basic Code universal Obfuscator intended to be used during penetration testing assignments.
+To be used mainly to avoid AV and mail filters detections as well as Blue Teams inspection tasks.
 
 ---
 
