@@ -10,7 +10,7 @@ import string
 import random
 import argparse
 
-DEBUG = False 
+DEBUG = False
 SPLIT = 80		# split long lines at this column
 MAX_LINE_LENGTH = 1024 - 100
 
@@ -399,6 +399,7 @@ class ScriptObfuscator:
 		self.bitShuffleObfuscator = BitShuffleStringObfuscator(ScriptObfuscator.obfuscateChar, ScriptObfuscator.obfuscateNumber)
 		self.function_boundaries = []
 		self.deobfuscatorAddedOnce = False
+		self.avoidRemovingTheseComments = []
 
 		self.normalize_only = normalize_only
 		self.garbage_perc = garbage_perc
@@ -479,14 +480,36 @@ class ScriptObfuscator:
 			m = re.search(r"('.*)", lines[i], flags=re.I)
 			if not m: 
 				continue
+
+			# BUG: This loop does not detect comments added by `obfuscateString` to surround 
+			#		'Declare PtrSafe Function' instructions. The loop cannot detect whether m.group(1)
+			#		that is currently regex-matched comment has been marked with avoid-removing by being
+			#		added to the `self.avoidRemovingTheseComments` list.
+			
+			# avoidComment = False
+			# for avoid in self.avoidRemovingTheseComments:
+			# 	if m.group(1) in avoid:
+			# 		dbg("\tThis comment is marked to be avoided from removing: {{ %s }}" % m.group(1))
+			# 		avoidComment = True
+			# 		break
+
+			# if avoidComment: continue
+
 			dbg("\tChecking if comment (%s) is inside of a string: (%s)" % (m.group(1), lines[i]))
 			n = re.search(r"(\"[^\"']*('[^\"]*)\")", lines[i], flags=re.I)
+
 			if not n:
 				dbg("\tNope, it's not.")
-				lines[i] = line.replace(m.group(1), '')
+				o = re.match(r"^\s*'.*", m.group(1), flags=re.I)
+				if o:
+					dbg("\tSince the comment opens the line, the entire line gets wiped out.")
+					lines[i] = ''
+				else:
+					lines[i] = line.replace(m.group(1), '')
 				info("Found comment: (%s)" % m.group(1))
 			else:
 				dbg("\tYes it is. (group: (%s))" % n.group(1))
+
 				if m.group(1) not in n.group(1) and m.group(1) not in lines[i]:
 					info("Found comment: (%s)" % m.group(1))
 					lines[i] = line.replace(m.group(1), '')
@@ -777,6 +800,7 @@ class ScriptObfuscator:
 
 	def obfuscateStrings(self, useBitShuffler = True):
 		replaces = set()
+		linesSurrounded = set()
 
 		for m in re.finditer(ScriptObfuscator.STRINGS_REGEX, self.output, flags=re.I|re.M):
 			orig_string = m.group(1)
@@ -791,17 +815,29 @@ class ScriptObfuscator:
 				and 'ptrsafe' in line.lower() \
 				and 'function' in line.lower():
 				# Syntax error while obfuscating pointer names and libs
-				if self.garbage_perc > 0:
-					varName = randomString(random.randint(8,20))
-					varName2 = randomString(random.randint(8,20))
-					junk = self.obfuscateString(randomString(random.randint(40,80)))
-					junk2 = self.obfuscateString(randomString(random.randint(40,80)))
-					garbage = '\'Dim %(varName)s\n\'Set %(varName)s = %(varContents)s\n' % \
-					{'varName' : varName, 'varContents' : junk}
-					garbage2 = '\'Dim %(varName)s\n\'Set %(varName)s = %(varContents)s\n' % \
-					{'varName' : varName2, 'varContents' : junk2}
+				
+				if line in linesSurrounded: continue
+				# BUG: Surrounding 'Declare PtrSafe Function' with comments is messing 
+				#		up `removeComments` procedure that gets called right after `obfuscateStrings`.
+				#		The avoided-comments list approach is not working by now correctly.
 
-					replaces.add((line, garbage + line + garbage2))
+				# if self.garbage_perc > 0:
+				# 	varName = randomString(random.randint(8,20))
+				# 	varName2 = randomString(random.randint(8,20))
+				# 	junk = self.obfuscateString(randomString(random.randint(40,50)))
+				# 	junk2 = self.obfuscateString(randomString(random.randint(40,50)))
+				# 	garbage = '\'Dim %(varName)s\n\'Set %(varName)s = %(varContents)s\n' % \
+				# 	{'varName' : varName, 'varContents' : junk}
+				# 	garbage2 = '\'Dim %(varName)s\n\'Set %(varName)s = %(varContents)s\n' % \
+				# 	{'varName' : varName2, 'varContents' : junk2}
+
+				# 	info("Surrounding Pointer declaration with obfuscated junk")
+				# 	dbg("\tJunk to surround:\nREPLACE this:\t{{ %s }}\nWITH this:\t{{ %s }}" % (line, garbage + line + garbage2))
+				# 	replaces.add((line, garbage + line + garbage2))
+				# 	linesSurrounded.add(line)
+
+				# 	self.avoidRemovingTheseComments.extend([x for x in garbage.split('\n') if x])
+				# 	self.avoidRemovingTheseComments.extend([x for x in garbage2.split('\n') if x])
 				continue
 			elif line.lstrip().startswith("'"): continue
 
@@ -830,7 +866,8 @@ class ScriptObfuscator:
 			replaces.add((orig_string, new_string))
 
 		for (orig, new) in replaces:
-			self.output = self.output.replace(orig, new)
+			dbg("Replacing:\n\t{{ %s }}\n\t=====>\n\t{{ %s }}\n" % (orig, new))
+			self.output = self.output.replace(orig, new) 
 
 		self.addDeobfuscator()
 

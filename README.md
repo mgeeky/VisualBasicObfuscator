@@ -184,6 +184,7 @@ MsgBox (onOrpZJSZL(Chr(105)&"O"&Chr(Int("80"))&Chr(2870-2789)&Chr(&H58)&Chr(2709
 
 ### KNOWN BUGS:
 
+- There is a bug within `removeComments` being called after `obfuscateString` that has added comments to surround `Declare PtrSafe Function` instructions. Such dynamically added junk-comments should be marked not to be removed, or get added after calling `removeComments` instead.
 - Inserting junk that is not a comment doesn't work properly (something about function boundaries detection)
     (also junk insertion breaks the syntax, so it had been **disabled** temporarily until the bug gets fixed).
 - ~~There is a bug with function parameters mangling that introduces various syntax errors and breaks~~
