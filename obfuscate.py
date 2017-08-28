@@ -76,6 +76,8 @@ class BitShuffleStringObfuscator:
 		'd2': 14,
 	}
 
+	STRING_PADDING_CHAR = '~'
+
 	DEOBFUSCATE_ROUTINE_NAME = 'MacroStringDeobfuscate'
 
 	def __init__(self, obfuscateChar = None, obfuscateNumber = None):
@@ -112,6 +114,10 @@ class BitShuffleStringObfuscator:
 		chars = list(string)
 		obfuscated = ''
 
+		# Add null-byte padding for strings of length not divisible by 4
+		if len(chars) % 4 != 0:
+			chars.extend([BitShuffleStringObfuscator.STRING_PADDING_CHAR] * (4 - (len(chars) % 4)))
+
 		for i in range(len(chars) / 4 + 1):
 			fr = i * 4
 			to = fr + 4
@@ -142,6 +148,10 @@ class BitShuffleStringObfuscator:
 			rawDword = self.uintRestore(dword)
 			out += struct.pack('<I', rawDword)
 
+		# Remove null-byte padding
+		while out.endswith(BitShuffleStringObfuscator.STRING_PADDING_CHAR):
+			out = out[:-1]
+		
 		return out
 
 	def uintObfuscate(self, num):
@@ -320,9 +330,27 @@ Public Function %(deobfuscateFunctionName)s(inputString As String) As String
     deobf = StrConv(varByte1, vbUnicode)
     If padding Then deobf = Left$(deobf, Len(deobf) - padding)
     %(deobfuscateFunctionName)s = %(deobfuscateFunctionName)sHelper(StrConv(deobf, vbFromUnicode))
-    
+    %(deobfuscateFunctionName)s = RemoveTrailingChars(%(deobfuscateFunctionName)s, "%(trailingCharacter)c")
+
 End Function
-''' % {'mask1': self.OBFUSCATION_PARAMS['mask1'], 'mask2': self.OBFUSCATION_PARAMS['mask2'], 'deobfuscateFunctionName' : BitShuffleStringObfuscator.DEOBFUSCATE_ROUTINE_NAME}
+
+Function RemoveTrailingChars(str As String, chars As String) As String
+    Dim count As Long
+    Dim parts() As String
+    parts = Split(str, chars)
+    count = UBound(parts, 1)
+    If count <> 0 Then
+        str = Left$(str, Len(str) - count)
+    End If
+    RemoveTrailingChars = str
+End Function
+
+''' % {
+	'mask1': self.OBFUSCATION_PARAMS['mask1'], 
+	'mask2': self.OBFUSCATION_PARAMS['mask2'], 
+	'deobfuscateFunctionName' : BitShuffleStringObfuscator.DEOBFUSCATE_ROUTINE_NAME, 
+	'trailingCharacter' : BitShuffleStringObfuscator.STRING_PADDING_CHAR
+}
 
 
 class ScriptObfuscator:
@@ -614,15 +642,20 @@ class ScriptObfuscator:
 
 
 	def randomizeVariablesAndFunctions(self):
+		replacedAlready = {}
+
 		def replaceVar(name, m):
 			varName = randomString(random.randint(4,12))
 			varToReplace = filter(lambda x: x and len(x)>0, m.groups())[0]
 
+			if varToReplace in replacedAlready.keys(): return
 			if len(varToReplace) < self.min_var_length: return
 			if varToReplace in self.reserved_words: return
+
 			info(name + " name obfuscated (context: \"%s\"): '%s' => '%s'" % (m.group(0).strip(), varToReplace, varName))
 			
-			self.output = re.sub(r"(?:\b" + varToReplace + r"\b)|(?:\b" + varToReplace + r"\s*=\s*)", varName, self.output, flags=re.I | re.M)
+			self.output = re.sub(r"(?<!\.)(?:\b" + varToReplace + r"\b)|(?:\b" + varToReplace + r"\s*=\s*)", varName, self.output, flags=re.I | re.M)
+			replacedAlready[varToReplace] = varName
 
 		# Variables
 		for m in re.finditer(ScriptObfuscator.VARIABLES_REGEX, self.output, flags = re.I|re.M):
@@ -669,12 +702,18 @@ class ScriptObfuscator:
 		for m in re.finditer(ScriptObfuscator.FUNCTION_REGEX, self.output, flags = re.I|re.M):
 			varName = randomString(random.randint(4,12))
 			varToReplace = m.group(1)
+			
 			if len(varToReplace) < self.min_var_length: continue
 			if varToReplace in self.reserved_words: continue
 			if varToReplace in ScriptObfuscator.RESERVED_NAMES: continue
+			if varToReplace in replacedAlready.keys(): continue
+			
 			info("Function name obfuscated (context: \"%s\"): '%s' => '%s'" % (m.group(0).strip(), varToReplace, varName))
 			self.output = re.sub(r"\b" + varToReplace + r"\b", varName, self.output, flags=re.I | re.M)
+			replacedAlready[varToReplace] = varName
 
+
+		info("Randomized %d names in total." % len(replacedAlready))
 
 	@staticmethod
 	def obfuscateNumber(num):
@@ -771,6 +810,10 @@ class ScriptObfuscator:
 			if 'const' in line.lower():
 				# Const are not to be anyhow obfuscated.
 				continue
+
+			if BitShuffleStringObfuscator.STRING_PADDING_CHAR in string:
+				info("\tPadding character: (%s) has been detected in input string. Have to avoid Bit Shuffle string encoder." % BitShuffleStringObfuscator.STRING_PADDING_CHAR)
+				exceptionallyAvoidBitShuffler = True
 
 			info("String to obfuscate (context: {{%s}}, len: %d): {{%s}}" % (m.group(0).strip(), len(orig_string), string))
 			
