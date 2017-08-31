@@ -678,8 +678,6 @@ class ScriptObfuscator:
 			if varToReplace in self.reserved_words: return
 
 			info(name + " name obfuscated (context: \"%s\"): '%s' => '%s'" % (m.group(0).strip(), varToReplace, varName))
-			
-			self.output = re.sub(r"(?<!\.)(?:\b" + varToReplace + r"\b)|(?:\b" + varToReplace + r"\s*=\s*)", varName, self.output, flags=re.I | re.M)
 			replacedAlready[varToReplace] = varName
 
 		# Variables
@@ -693,37 +691,21 @@ class ScriptObfuscator:
 		for m in re.finditer(ScriptObfuscator.GLOBALS_REGEX, self.output, flags = re.I|re.M):
 			replaceVar('Global', m)
 
-		# Function parameters
-		self.detectFunctionBoundaries()
 
 		for m in re.finditer(ScriptObfuscator.FUNCTION_REGEX, self.output, flags = re.I|re.M):
 			pos = m.span()[0]
 			funcName = m.group(1)
-			replaces = []
 
 			for n in re.finditer(ScriptObfuscator.FUNCTION_PARAMETERS_REGEX, m.group(0), flags=re.I|re.M):
 				pos2 = n.span()[0]
 				varName = randomString(random.randint(4,12))
 				varToReplace = n.group(1)
-				replaces.append((varToReplace, varName))
 
-			func = self.getFuncBoundaries(funcName)
-			start = max(func['funcStart'] - len(m.group(0)), 0)
-			funcCode = self.output[start:func['funcStop']]
-			pre_func = self.output[:start]
-			post_func = self.output[func['funcStop']:]
+				if varToReplace in replacedAlready.keys(): continue
+				replacedAlready[varToReplace] = varName
+				info("Function: (%s): Adding variable obfuscation: (%s) => (%s)" % (funcName, varToReplace, varName))
 
-			for repl in replaces:
-				info("Function argument obfuscated (%s): (%s) => (%s)" % (funcName, repl[0], repl[1]))
-				out = re.sub(r"\b" + repl[0] + r"\b", repl[1], funcCode, flags=re.I|re.M)
-
-				# BUG: In some corner case it totally breaks the syntax
-				#self.output = pre_func + out + post_func
-
-				# Temporary bug fix:
-				self.output = self.output.replace(funcCode, out)
-
-		# Functions
+		# Function names
 		for m in re.finditer(ScriptObfuscator.FUNCTION_REGEX, self.output, flags = re.I|re.M):
 			varName = randomString(random.randint(4,12))
 			varToReplace = m.group(1)
@@ -734,9 +716,12 @@ class ScriptObfuscator:
 			if varToReplace in replacedAlready.keys(): continue
 			
 			info("Function name obfuscated (context: \"%s\"): '%s' => '%s'" % (m.group(0).strip(), varToReplace, varName))
-			self.output = re.sub(r"\b" + varToReplace + r"\b", varName, self.output, flags=re.I | re.M)
+			#self.output = re.sub(r"\b" + varToReplace + r"\b", varName, self.output, flags=re.I | re.M)
 			replacedAlready[varToReplace] = varName
 
+		for (varToReplace, varName) in replacedAlready.items():
+			dbg("Obfuscate variable name: (%s) => (%s)" % (varToReplace, varName))
+			self.output = re.sub(r"(?<!\.)(?:\b" + varToReplace + r"\b)|(?:\b" + varToReplace + r"\s*=\s*)", varName, self.output, flags=re.I | re.M)
 
 		info("Randomized %d names in total." % len(replacedAlready))
 
@@ -752,7 +737,11 @@ class ScriptObfuscator:
 			lambda rnd1, num: '%d/%d' % (rnd1*num, rnd1),
 		)
 
-		return random.choice(num_coders)(rnd1, num)
+		out = random.choice(num_coders)(rnd1, num)
+		if '/0' in out: 
+			# Ooops, it cannot be happen!
+			out = '%d' % num
+		return out
 
 	@staticmethod
 	def obfuscateChar(char):

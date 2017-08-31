@@ -191,6 +191,7 @@ MsgBox (onOrpZJSZL(Chr(105)&"O"&Chr(Int("80"))&Chr(2870-2789)&Chr(&H58)&Chr(2709
 - Add polymorphic code obfuscation with given key to put into document's metadata
 - Add `Eval` based code obfuscation routines
 - Offer the user functionality of storing encryption/decryption key in document's metadata.
+- Reinforce variable names randomization to have var names randomized each time within function-block 
 - Implement several techniques for avoiding detections implemented in [Revoke-Obfuscation](https://www.blackhat.com/docs/us-17/thursday/us-17-Bohannon-Revoke-Obfuscation-PowerShell-Obfuscation-Detection-And%20Evasion-Using-Science-wp.pdf), mainly for fun and for avoidance of generic PUA (_Potentially Unwatend Application_) detection algorithms in modern Anti-Virus softwares
 
 
