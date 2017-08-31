@@ -583,6 +583,7 @@ class ScriptObfuscator:
 			suffix = txt[pos:endOfLine + 1]
 			
 			lineStart = pos + m.span()[0]
+
 			pos += m.span()[1]
 			pos += len(suffix)		
 			lineStop = pos - 1
@@ -618,6 +619,7 @@ class ScriptObfuscator:
 
 				dbg("\tYes. It matches smoothly: (%s)" % n.group(2))
 				longLine += n.group(2)
+				lineStop = endOfLine
 				
 			assert lineStart < lineStop
 			lineStop = pos
@@ -650,7 +652,7 @@ class ScriptObfuscator:
 				dbg("Too short to be replaced (%s)..." % longLine)
 				continue
 			else:
-				dbg("This line will get merged:\n{{ %s }}\n" % newLine)
+				dbg("This line will get merged:\n{{ %s }}\nINTO:\n{{ %s }}\n" % (origLine, newLine))
 				replaces.append((origLine, newLine, longLine))
 				if pos >= len(txt): break
 
@@ -843,7 +845,7 @@ class ScriptObfuscator:
 
 			exceptionallyAvoidBitShuffler = False
 
-			if 'const' in line.lower():
+			if 'const ' in line.lower():
 				# Const are not to be anyhow obfuscated.
 				continue
 
