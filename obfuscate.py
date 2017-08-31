@@ -333,7 +333,6 @@ Public Function %(deobfuscateFunctionName)s(inputString As String) As String
     If padding Then deobf = Left$(deobf, Len(deobf) - padding)
     %(deobfuscateFunctionName)s = %(deobfuscateFunctionName)sHelper(StrConv(deobf, vbFromUnicode))
     %(deobfuscateFunctionName)s = RemoveTrailingChars(%(deobfuscateFunctionName)s, "%(trailingCharacter)c")
-
 End Function
 
 Function RemoveTrailingChars(str As String, chars As String) As String
@@ -346,7 +345,6 @@ Function RemoveTrailingChars(str As String, chars As String) As String
     End If
     RemoveTrailingChars = str
 End Function
-
 ''' % {
 	'mask1': self.OBFUSCATION_PARAMS['mask1'], 
 	'mask2': self.OBFUSCATION_PARAMS['mask2'], 
@@ -813,9 +811,9 @@ class ScriptObfuscator:
 			line_stop = m.span()[1] + self.output[m.span()[1]:].find('\n') + 1
 			line = self.output[line_start:line_stop]
 
-			if 'declare' in line.lower() \
-				and 'ptrsafe' in line.lower() \
-				and 'function' in line.lower():
+			if 'declare ' in line.lower() \
+				and 'lib ' in line.lower() \
+				and 'function ' in line.lower():
 				# Syntax error while obfuscating pointer names and libs
 				
 				if line in linesSurrounded: continue
