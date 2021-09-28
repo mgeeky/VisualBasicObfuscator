@@ -205,3 +205,22 @@ MsgBox (onOrpZJSZL(Chr(105)&"O"&Chr(Int("80"))&Chr(2870-2789)&Chr(&H58)&Chr(2709
     (also junk insertion breaks the syntax, so it had been **disabled** temporarily until the bug gets fixed).
 - ~~There is a bug with function parameters mangling that introduces various syntax errors and breaks~~
 - If there is a string within quotes placed in the comment - it will wrongly get obfuscated breaking the syntax
+
+
+
+---
+
+### ☕ Show Support ☕
+
+This and other projects are outcome of sleepless nights and **plenty of hard work**. If you like what I do and appreciate that I always give back to the community,
+[Consider buying me a coffee](https://github.com/sponsors/mgeeky) _(or better a beer)_ just to say thank you! 💪 
+
+---
+
+## Author
+
+```   
+   Mariusz B. / mgeeky, 21
+   <mb [at] binary-offensive.com>
+   (https://github.com/mgeeky)
+```
