@@ -401,7 +401,7 @@ class ScriptObfuscator:
         self.input = ''
         self.output = ''
 
-        self.bitShuffleObfuscator = BitShuffleStringObfuscator(ScriptObfuscator.obfuscateChar, ScriptObfuscator.obfuscateNumber)44
+        self.bitShuffleObfuscator = BitShuffleStringObfuscator(ScriptObfuscator.obfuscateChar, ScriptObfuscator.obfuscateNumber)
         self.function_boundaries = []
         self.deobfuscatorAddedOnce = False
         self.avoidRemovingTheseComments = []
