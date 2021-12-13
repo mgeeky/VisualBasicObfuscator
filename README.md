@@ -3,6 +3,10 @@
 ### NOTICE: This repository is now obsoleted. 
 I'm working on releasing my second, way more reliable and advanced Visual Basic obfuscator that I have been using for a few years by now. This obfuscator therefore becomes outdated and will be no longer maintained.
 
+---
+
+### Intro
+
 Visual Basic Code universal Obfuscator intended to be used during penetration testing assignments.
 To be used mainly to avoid AV and mail filters detections as well as Blue Teams inspection tasks.
 
